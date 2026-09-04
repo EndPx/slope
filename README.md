@@ -10,6 +10,9 @@ Currently committed:
 
 - [`docs/spec/SPEC.md`](docs/spec/SPEC.md) — the complete product and protocol specification: hard hackathon rules, the locked tech stack, the detailed project spec (position mechanics, curve formulas, execution flow, subgraph schema, UI screens, testing standard, priority order), a numbered CHANGELOG (Revision 1: `maxAmountIn` on `AdaptiveExecute`; Revision 2: pull-per-fill custody, `minFillAmount`, dual-quote price impact, decimal normalization, terminal clamp, permissionless execution), a Decision Log, and verified implementation notes.
 - [`docs/RESEARCH-NOTES.md`](docs/RESEARCH-NOTES.md) — our own conclusions from primary-source research (RPC-verified deployment facts, the official quote surface, policy-engine constraints, tooling limits), with links to official sources. Third-party documentation and whitepapers are deliberately **not** committed to this repository; we link instead.
+- [`docs/HACKATHON_PLAN.md`](docs/HACKATHON_PLAN.md) — the mission, definition of success, frozen MVP scope, curve semantics summary, architecture, correctness gates, sponsor strategy, time-boxed build order, stop-loss rules, demo storyboard, and submission checklist.
+- [`docs/IMPLEMENTATION_ORDER.md`](docs/IMPLEMENTATION_ORDER.md) — the dependency-ordered development sequence with per-unit exit gates, intended commit messages, and commit discipline.
+- [`docs/ETHGLOBAL_RULES_COMPLIANCE.md`](docs/ETHGLOBAL_RULES_COMPLIANCE.md) — the page-by-page rules audit: Start Fresh compliance, version-control policy, AI-tools disclosure, demo-video rules, the partner-prize eligibility matrix (1inch / The Graph / Privy), and the public-demo topology gate.
 - `.gitignore` — repository hygiene from the first commit.
 
 Not yet implemented (the implementation order is fixed in SPEC.md, section 9): contracts, Privy integration, keeper service, subgraph, frontend, deployments, and the public demo. This Status section and the docs index below are updated as each piece lands.
@@ -22,8 +25,12 @@ Will be linked here once deployed — application, subgraph, and hosted endpoint
 
 - [`docs/spec/SPEC.md`](docs/spec/SPEC.md) — the normative specification (see its CHANGELOG and Decision Log for every design decision and its date).
 - [`docs/RESEARCH-NOTES.md`](docs/RESEARCH-NOTES.md) — primary-source research conclusions and verification methods.
+- [`docs/HACKATHON_PLAN.md`](docs/HACKATHON_PLAN.md) — mission, definition of success, frozen MVP scope, curve semantics, architecture, correctness gates, sponsor strategy, time-boxed build order, stop-loss rules, demo storyboard, and submission checklist.
+- [`docs/IMPLEMENTATION_ORDER.md`](docs/IMPLEMENTATION_ORDER.md) — the dependency-ordered development sequence with per-unit exit gates and intended commit messages.
+- [`docs/ETHGLOBAL_RULES_COMPLIANCE.md`](docs/ETHGLOBAL_RULES_COMPLIANCE.md) — the rules audit, partner-prize eligibility matrix, and public-demo topology gate.
+- `docs/WIRE_FORMAT.md` — normative order/program encoding, event contract, units, and test vectors *(added with the Aqua integration milestone)*.
 - `docs/DEPLOYMENT.md` — deployment/seed/verification runbook *(added with the deployment milestone)*.
-- `docs/DEMO_VIDEO_SCRIPT.md` — the submission recording sequence *(added before submission)*.
+- `docs/DEMO_VIDEO_SCRIPT.md` — the submission recording sequence *(added before recording)*.
 - `prompts/` — the material AI-assisted specifications and prompts used during development *(committed as they are produced)*.
 
 ## Planned Workspace
