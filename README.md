@@ -13,6 +13,7 @@ Currently committed:
 - [`docs/HACKATHON_PLAN.md`](docs/HACKATHON_PLAN.md) — the mission, definition of success, frozen MVP scope, curve semantics summary, architecture, correctness gates, sponsor strategy, time-boxed build order, stop-loss rules, demo storyboard, and submission checklist.
 - [`docs/IMPLEMENTATION_ORDER.md`](docs/IMPLEMENTATION_ORDER.md) — the dependency-ordered development sequence with per-unit exit gates, intended commit messages, and commit discipline.
 - [`docs/ETHGLOBAL_RULES_COMPLIANCE.md`](docs/ETHGLOBAL_RULES_COMPLIANCE.md) — the page-by-page rules audit: Start Fresh compliance, version-control policy, AI-tools disclosure, demo-video rules, the partner-prize eligibility matrix (1inch / The Graph / Privy), and the public-demo topology gate.
+- [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) — the normative end-to-end implementation map: product boundary, system map, sources of truth, on-chain/TypeScript/service bricks, the 1inch integration surface, The Graph read path, end-to-end flows, security and verification bricks, deployment operations, sponsor mapping, and the MVP definition of done.
 - `.gitignore` — repository hygiene from the first commit.
 
 Not yet implemented (the implementation order is fixed in SPEC.md, section 9): contracts, Privy integration, keeper service, subgraph, frontend, deployments, and the public demo. This Status section and the docs index below are updated as each piece lands.
@@ -28,6 +29,7 @@ Will be linked here once deployed — application, subgraph, and hosted endpoint
 - [`docs/HACKATHON_PLAN.md`](docs/HACKATHON_PLAN.md) — mission, definition of success, frozen MVP scope, curve semantics, architecture, correctness gates, sponsor strategy, time-boxed build order, stop-loss rules, demo storyboard, and submission checklist.
 - [`docs/IMPLEMENTATION_ORDER.md`](docs/IMPLEMENTATION_ORDER.md) — the dependency-ordered development sequence with per-unit exit gates and intended commit messages.
 - [`docs/ETHGLOBAL_RULES_COMPLIANCE.md`](docs/ETHGLOBAL_RULES_COMPLIANCE.md) — the rules audit, partner-prize eligibility matrix, and public-demo topology gate.
+- [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) — the normative end-to-end implementation map (bricks, sources of truth, flows, security, definition of done).
 - `docs/WIRE_FORMAT.md` — normative order/program encoding, event contract, units, and test vectors *(added with the Aqua integration milestone)*.
 - `docs/DEPLOYMENT.md` — deployment/seed/verification runbook *(added with the deployment milestone)*.
 - `docs/DEMO_VIDEO_SCRIPT.md` — the submission recording sequence *(added before recording)*.
