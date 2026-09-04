@@ -14,6 +14,7 @@ Currently committed:
 - [`docs/IMPLEMENTATION_ORDER.md`](docs/IMPLEMENTATION_ORDER.md) — the dependency-ordered development sequence with per-unit exit gates, intended commit messages, and commit discipline.
 - [`docs/ETHGLOBAL_RULES_COMPLIANCE.md`](docs/ETHGLOBAL_RULES_COMPLIANCE.md) — the page-by-page rules audit: Start Fresh compliance, version-control policy, AI-tools disclosure, demo-video rules, the partner-prize eligibility matrix (1inch / The Graph / Privy), and the public-demo topology gate.
 - [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) — the normative end-to-end implementation map: product boundary, system map, sources of truth, on-chain/TypeScript/service bricks, the 1inch integration surface, The Graph read path, end-to-end flows, security and verification bricks, deployment operations, sponsor mapping, and the MVP definition of done.
+- [`docs/PRODUCT_SPEC.md`](docs/PRODUCT_SPEC.md) — the product-facing protocol specification: schedule family, authorization semantics, custody model, impact measurement, execution flow, lifecycle, delegated authority, benchmark, modules, and the demo definition of done.
 - `.gitignore` — repository hygiene from the first commit.
 
 Not yet implemented (the implementation order is fixed in SPEC.md, section 9): contracts, Privy integration, keeper service, subgraph, frontend, deployments, and the public demo. This Status section and the docs index below are updated as each piece lands.
