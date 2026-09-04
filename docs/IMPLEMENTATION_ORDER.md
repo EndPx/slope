@@ -64,10 +64,11 @@ Intended commits: `feat(contracts): aggressive and conservative curves`, `feat(s
 - Seed ungated WETH/USDC strategies (ship; total shipped ≤ wallet balance)
 - Replace mock adapters with real `quote()` / `swap()` wiring; probe-quote + execution-quote impact check on-chain
 - `WIRE_FORMAT.md`: order/program encoding, taker traits blob, event contract, units and byte offsets
+- `LICENSES/`: preserve `Aqua-Source-1.1.txt`, `SwapVM-1.1.txt`, and both upstream `THIRD_PARTY_NOTICES` files verbatim, plus a README explaining the license layering; any modified router source (the `_slopeXD` stretch) is committed under `LicenseRef-Degensoft-SwapVM-1.1` per the license's copyleft (§3.1) — changes marked with dates, build/deployment instructions included
 
-Intended commits: `feat(contracts): deploy official aqua contracts to base sepolia`, `feat(contracts): settle fills through aqua router`, `docs: add wire format`
+Intended commits: `feat(contracts): deploy official aqua contracts to base sepolia`, `feat(contracts): settle fills through aqua router`, `docs: add wire format`, `docs(contracts): preserve degensoft license texts and notices`
 
-**Gate:** a scripted on-chain fill settles through the deployed router on Base Sepolia; quote/swap consistency verified.
+**Gate:** a scripted on-chain fill settles through the deployed router on Base Sepolia; quote/swap consistency verified; `LICENSES/` complete and referenced.
 
 ## Unit 7 — Privy bounded delegation
 
@@ -103,7 +104,7 @@ Intended commits: `feat(keeper): polling loop with route verification`, `feat(ke
 
 Intended commits: `feat(frontend): create order screen`, `feat(frontend): execution progress screen`, `feat(frontend): performance dashboard`, `chore: vercel deployment`
 
-**Gate:** full user flow works on the hosted public URL.
+**Gate:** full user flow works on the hosted public URL; the Degensoft attribution ("Powered by Aqua/SwapVM — © Degensoft Ltd 2025") is visible in the UI footer.
 
 ## Unit 11 — Submission package
 

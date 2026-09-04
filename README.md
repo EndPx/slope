@@ -72,7 +72,7 @@ This is hackathon software and is not production-ready or audited. Do not use it
 
 ## License And Attribution
 
-Original Slope code is intended to be licensed under the MIT License; the LICENSE file is added with the first code commit. Files carrying a different SPDX identifier or their own license remain governed by those terms. Aqua and SwapVM are used under their own terms via the prize's explicit allowance for official-contract deployment.
+Original Slope code is intended to be licensed under the MIT License; the LICENSE file is added with the first code commit. A `LICENSES/` directory preserves the full Aqua-Source-1.1 and SwapVM-1.1 license texts and the upstream third-party notices verbatim; components derived from Aqua/SwapVM (such as a modified router) remain governed by those licenses, while independent Slope code that merely calls or interfaces with them stays under MIT. Aqua and SwapVM are deployed from their official source per the 1inch prize's explicit allowance.
 
 **Powered by Aqua — © Degensoft Ltd 2025**
 
