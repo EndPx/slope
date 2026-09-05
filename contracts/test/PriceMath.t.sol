@@ -2,7 +2,7 @@
 pragma solidity 0.8.30;
 
 import {Test} from "forge-std/Test.sol";
-import {PriceMath} from "src/math/PriceMath.sol";
+import {PriceMath} from "@/math/PriceMath.sol";
 
 contract PriceMathTest is Test {
     function test_Normalize_WethToUsdc() external pure {

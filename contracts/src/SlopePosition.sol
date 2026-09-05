@@ -7,9 +7,9 @@ import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol
 import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
 import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 
-import {CurveMath} from "src/math/CurveMath.sol";
-import {PriceMath} from "src/math/PriceMath.sol";
-import {IAquaSwapVMRouter} from "src/interfaces/IAquaSwapVMRouter.sol";
+import {CurveMath} from "@/math/CurveMath.sol";
+import {PriceMath} from "@/math/PriceMath.sol";
+import {IAquaSwapVMRouter} from "@/interfaces/IAquaSwapVMRouter.sol";
 import {
     AquaRoute,
     CreateParams,
@@ -18,7 +18,7 @@ import {
     Position,
     SkipReason,
     SlopeErrors
-} from "src/SlopeTypes.sol";
+} from "@/SlopeTypes.sol";
 
 /// @title SlopePosition
 /// @notice Taker-side adaptive execution (docs/PRODUCT_SPEC.md). A position

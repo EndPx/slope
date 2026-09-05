@@ -2,10 +2,10 @@
 pragma solidity 0.8.30;
 
 import {Test} from "forge-std/Test.sol";
-import {SlopePosition} from "src/SlopePosition.sol";
-import {CurveMath} from "src/math/CurveMath.sol";
-import {AquaRoute, CreateParams, CurveShape, ISlopeEvents, Position, SlopeErrors} from "src/SlopeTypes.sol";
-import {IAquaSwapVMRouter} from "src/interfaces/IAquaSwapVMRouter.sol";
+import {SlopePosition} from "@/SlopePosition.sol";
+import {CurveMath} from "@/math/CurveMath.sol";
+import {AquaRoute, CreateParams, CurveShape, ISlopeEvents, Position, SlopeErrors} from "@/SlopeTypes.sol";
+import {IAquaSwapVMRouter} from "@/interfaces/IAquaSwapVMRouter.sol";
 import {MockERC20} from "test/mocks/MockERC20.sol";
 import {MockAquaRouter} from "test/mocks/MockAquaRouter.sol";
 

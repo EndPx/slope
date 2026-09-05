@@ -3,9 +3,9 @@ pragma solidity 0.8.30;
 
 import {Test} from "forge-std/Test.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import {SlopePosition} from "src/SlopePosition.sol";
-import {AquaRoute, CreateParams, CurveShape, ISlopeEvents, Position, SkipReason, SlopeErrors} from "src/SlopeTypes.sol";
-import {IAquaSwapVMRouter} from "src/interfaces/IAquaSwapVMRouter.sol";
+import {SlopePosition} from "@/SlopePosition.sol";
+import {AquaRoute, CreateParams, CurveShape, ISlopeEvents, Position, SkipReason, SlopeErrors} from "@/SlopeTypes.sol";
+import {IAquaSwapVMRouter} from "@/interfaces/IAquaSwapVMRouter.sol";
 import {MockERC20} from "test/mocks/MockERC20.sol";
 import {MockAquaRouter} from "test/mocks/MockAquaRouter.sol";
 

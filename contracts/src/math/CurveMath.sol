@@ -2,7 +2,7 @@
 pragma solidity 0.8.30;
 
 import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
-import {CurveShape} from "src/SlopeTypes.sol";
+import {CurveShape} from "@/SlopeTypes.sol";
 
 /// @title CurveMath
 /// @notice The execution schedule kernel (docs/MATH_SPEC.md section 3).

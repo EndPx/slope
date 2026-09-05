@@ -2,8 +2,8 @@
 pragma solidity 0.8.30;
 
 import {Test} from "forge-std/Test.sol";
-import {CurveMath} from "src/math/CurveMath.sol";
-import {CurveShape} from "src/SlopeTypes.sol";
+import {CurveMath} from "@/math/CurveMath.sol";
+import {CurveShape} from "@/SlopeTypes.sol";
 
 /// @dev External wrapper for revert interception in tests.
 contract ProgressCaller {
