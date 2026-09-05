@@ -44,7 +44,7 @@ Will be linked here once deployed — application, subgraph, and hosted endpoint
 - `docs/WIRE_FORMAT.md` — normative order/program encoding, event contract, units, and test vectors *(added with the Aqua integration milestone)*.
 - [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md) — the deployment/seed/verification runbook with the live addresses, provenance, and on-chain evidence.
 - `docs/DEMO_VIDEO_SCRIPT.md` — the submission recording sequence *(added before recording)*.
-- `prompts/` — the material AI-assisted specifications and prompts used during development *(committed as they are produced)*.
+- [`prompts/`](prompts/README.md) — the material AI-assisted specifications and prompts: the initial handoff, each implementation-step directive, and every human review that produced a numbered design revision — committed chronologically per the ETHGlobal transparency requirement.
 
 ## Planned Workspace
 
