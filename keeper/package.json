@@ -1,0 +1,26 @@
+{
+  "name": "@slope/keeper",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "vitest run",
+    "setup": "tsx src/setup.ts",
+    "delegate": "tsx src/delegate-server.ts",
+    "keeper": "tsx src/keeper.ts",
+    "list-delegated": "tsx src/list-delegated.ts"
+  },
+  "dependencies": {
+    "@privy-io/node": "0.34.0",
+    "dotenv": "^16.4.5",
+    "hono": "^4.6.0",
+    "@hono/node-server": "^1.13.0",
+    "viem": "^2.48.4"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.6.0",
+    "vitest": "^2.1.0"
+  }
+}

@@ -1,0 +1,86 @@
+:root {
+  color-scheme: dark;
+  font-family: ui-monospace, "SFMono-Regular", Menlo, monospace;
+}
+body {
+  margin: 0;
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  background: #0b0e11;
+  color: #e6e6e6;
+}
+main {
+  max-width: 560px;
+  padding: 2rem;
+  border: 1px solid #1f2733;
+  border-radius: 12px;
+  background: #10151c;
+}
+h1 {
+  margin: 0 0 0.2rem;
+  letter-spacing: 0.12em;
+}
+.live {
+  color: #19d17c;
+  animation: blink 1.6s infinite;
+  margin-left: 0.3rem;
+}
+@keyframes blink {
+  50% {
+    opacity: 0.25;
+  }
+}
+.tagline {
+  margin-top: 0;
+  color: #8a97a8;
+  font-size: 0.8rem;
+}
+button {
+  display: block;
+  width: 100%;
+  margin: 0.5rem 0;
+  padding: 0.7rem 1rem;
+  background: #17212e;
+  color: #e6e6e6;
+  border: 1px solid #2a3a4f;
+  border-radius: 8px;
+  font: inherit;
+  cursor: pointer;
+}
+button:hover:not(:disabled) {
+  border-color: #19d17c;
+}
+button:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+.wallet code,
+.status {
+  font-size: 0.78rem;
+  color: #9fe8c0;
+  word-break: break-all;
+}
+.muted {
+  color: #8a97a8;
+  font-size: 0.78rem;
+}
+footer {
+  margin-top: 1.5rem;
+  display: flex;
+  justify-content: space-between;
+  color: #55637a;
+  font-size: 0.72rem;
+}
+footer code {
+  font-size: 0.72rem;
+}
+.link {
+  width: auto;
+  margin: 0;
+  padding: 0;
+  background: none;
+  border: none;
+  color: #55637a;
+  text-decoration: underline;
+}

@@ -40,3 +40,12 @@ dist/
 # ---------------------------------------------------------------------------
 .DS_Store
 Thumbs.db
+
+# ---------------------------------------------------------------------------
+# Privy keeper secrets — per-position authorization keys, never commit
+# ---------------------------------------------------------------------------
+keeper/.keystore.json
+keeper/keys/
+*.pem
+keeper/.privy-aggregation-id
+delegate-server.log

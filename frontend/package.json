@@ -1,0 +1,29 @@
+{
+  "name": "@slope/frontend",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@privy-io/react-auth": "^3.40.0",
+    "@solana/kit": "^2.0.0",
+    "@solana-program/memo": "^0.10.0",
+    "@solana-program/system": "^0.7.0",
+    "@solana-program/token": "^0.5.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "viem": "^2.48.4"
+  },
+  "devDependencies": {
+    "@types/react": "^18.3.0",
+    "@types/react-dom": "^18.3.0",
+    "@vitejs/plugin-react": "^4.3.0",
+    "typescript": "^5.6.0",
+    "vite": "^6.0.0",
+    "vite-plugin-node-polyfills": "^0.22.0"
+  }
+}
