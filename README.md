@@ -6,7 +6,15 @@ Slope is a non-custodial execution product for takers: it splits one large token
 
 This repository was initialized from an empty GitHub repository on **5 September 2026**, during ETHGlobal Online. Work is spec-driven: the complete product and protocol specification was written and committed **before** implementation began, and every post-handoff design decision is recorded as a numbered, dated revision inside that document.
 
-Currently committed:
+### Implemented — core contracts are live on Base Sepolia
+
+- **`SlopePosition` deployed and source-verified**: [`0xC7c6FaD1C2A0e8961E34D40c39C059ECE6dBB8Cc`](https://sepolia.basescan.org/address/0xC7c6FaD1C2A0e8961E34D40c39C059ECE6dBB8Cc#code) (deployment block `46418713`, the subgraph's future `startBlock`).
+- **Official 1inch Aqua infrastructure self-deployed from the pinned `v1.0.2` sources** (prize-permitted redeployment) and source-verified: registry [`0xd2A8…64DA`](https://sepolia.basescan.org/address/0xd2A8f6D7645F53aB23dC3EcB146a196026F964DA#code), SwapVM router [`0x054F…7DA2`](https://sepolia.basescan.org/address/0x054F6A7CE03fdEB7814977B0FE7017cc5B2d7DA2#code); demo pair dETH (18 dec) / dUSD (6 dec).
+- **Real on-chain fills through the official router**: a full position settlement of **10 dETH → 29,632.91 dUSD** — tx [`0x3ca31dd7…b28c70`](https://sepolia.basescan.org/tx/0x3ca31dd7488ad4303a5822bed5c085a95dc8b71c329336e72528421430b28c70) — and a natural **mid-window partial fill** (0.5 dETH → 1,469.98 dUSD, position still active): tx [`0xf46ae64d…555a6`](https://sepolia.basescan.org/tx/0xf46ae64daeeca8a51e98ebbdad4e1b63832cc87e12ca2122cca92684c4c555a6). Every fill is guarded by the curve schedule, dual-quote price impact, absolute bounds, and pull-per-fill custody.
+- **Tests**: 67 Foundry tests green (curve boundaries exact to the wei, monotonicity/range fuzz across all three shapes, full skip matrix, lifecycle completion, base-mainnet fork validation against the official router) plus 18 TypeScript reference-model tests, with 96 committed cross-validation vectors matching Solidity bit-for-bit.
+- Addresses, deployment transaction hashes, source provenance, and the runbook: [`deployments/base-sepolia.json`](contracts/deployments/base-sepolia.json) + [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md).
+
+Currently committed docs:
 
 - [`docs/spec/SPEC.md`](docs/spec/SPEC.md) — the complete product and protocol specification: hard hackathon rules, the locked tech stack, the detailed project spec (position mechanics, curve formulas, execution flow, subgraph schema, UI screens, testing standard, priority order), a numbered CHANGELOG (Revision 1: `maxAmountIn` on `AdaptiveExecute`; Revision 2: pull-per-fill custody, `minFillAmount`, dual-quote price impact, decimal normalization, terminal clamp, permissionless execution), a Decision Log, and verified implementation notes.
 - [`docs/RESEARCH-NOTES.md`](docs/RESEARCH-NOTES.md) — our own conclusions from primary-source research (RPC-verified deployment facts, the official quote surface, policy-engine constraints, tooling limits), with links to official sources. Third-party documentation and whitepapers are deliberately **not** committed to this repository; we link instead.
@@ -19,7 +27,7 @@ Currently committed:
 - [`docs/MATH_SPEC.md`](docs/MATH_SPEC.md) — the normative mathematical kernel: units, the integer arithmetic contract, the progress schedule with exactness proofs, authorized amounts, price normalization and dual-quote impact, benchmark definitions, reference-model parity, numerical safety, and required mathematical tests.
 - `.gitignore` — repository hygiene from the first commit.
 
-Not yet implemented (the implementation order is fixed in SPEC.md, section 9): contracts, Privy integration, keeper service, subgraph, frontend, deployments, and the public demo. This Status section and the docs index below are updated as each piece lands.
+Not yet implemented (the implementation order is fixed in SPEC.md, section 9): **Privy integration** (embedded-wallet onboarding, session signer + policy), the **keeper service**, the **subgraph**, the **frontend**, and the hosted **public demo**. This Status section and the docs index below are updated at major milestones.
 
 ## Live Demo
 
@@ -34,7 +42,7 @@ Will be linked here once deployed — application, subgraph, and hosted endpoint
 - [`docs/ETHGLOBAL_RULES_COMPLIANCE.md`](docs/ETHGLOBAL_RULES_COMPLIANCE.md) — the rules audit, partner-prize eligibility matrix, and public-demo topology gate.
 - [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) — the normative end-to-end implementation map (bricks, sources of truth, flows, security, definition of done).
 - `docs/WIRE_FORMAT.md` — normative order/program encoding, event contract, units, and test vectors *(added with the Aqua integration milestone)*.
-- `docs/DEPLOYMENT.md` — deployment/seed/verification runbook *(added with the deployment milestone)*.
+- [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md) — the deployment/seed/verification runbook with the live addresses, provenance, and on-chain evidence.
 - `docs/DEMO_VIDEO_SCRIPT.md` — the submission recording sequence *(added before recording)*.
 - `prompts/` — the material AI-assisted specifications and prompts used during development *(committed as they are produced)*.
 
