@@ -29,10 +29,14 @@ contract DeployAqua is Script {
 
         Manifest.Data memory m = Manifest.read(Manifest.baseSepoliaPath());
         m.chainId = block.chainid;
+        m.networkName = "Base Sepolia";
+        m.publicRpcUrl = "https://sepolia.base.org";
+        m.explorerUrl = "https://sepolia.basescan.org";
         m.deployer = deployer;
         m.aquaRegistry = registry;
         m.aquaRouter = router;
-        m.weth = WETH;
+        m.sourceCommit = vm.envOr("SOURCE_COMMIT", string(""));
+        m.deployedAt = vm.envOr("DEPLOYED_AT", string(""));
         Manifest.write(Manifest.baseSepoliaPath(), m);
 
         console2.log("AquaRegistry:", registry);
