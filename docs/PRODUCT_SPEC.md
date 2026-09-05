@@ -73,7 +73,7 @@ executionPrice  = quote(fillAmount)        the real size
 priceImpactBps  = (referencePrice - executionPrice) / referencePrice * 10000
 ```
 
-The fill is skipped if `priceImpactBps > maxSlippageBps`. Independently, the execution price must lie within `[minPrice, maxPrice]`. Both checks apply; they are not redundant — one is relative (this fill's own footprint), one is absolute (the acceptable price range). A single pre-trade quote would make "slippage" zero by construction; the probe-versus-execution pair is what makes the check real.
+The fill is skipped if `priceImpactBps > maxSlippageBps`. Independently, the execution price must lie within `[minPrice, maxPrice]`. Both checks apply; they are not redundant — one is relative (this fill's own footprint), one is absolute (the acceptable price range). A single pre-trade quote would make "slippage" zero by construction; the probe-versus-execution pair is what makes the check real. Honest limit (REVISION 3): the probe carries a floor of `10^(decimalsIn - 4)` whole tokenIn units — a notional routers price non-zero — and a fill smaller than that floor becomes its own probe, so the impact measurement is not applied and the fill settles with `impactChecked = false` on the event; the absolute bounds remain its only price protection, and nothing here claims every fill is price-impact checked.
 
 ## 6. Custody Model
 

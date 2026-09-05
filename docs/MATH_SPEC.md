@@ -91,13 +91,13 @@ Evaluated with `mulDiv` end-to-end (the scalars `10^(18 - d)` are compile-time o
 ### 5.2 Dual-quote impact
 
 ```text
-probeAmount     = fillAmount / 1000            // floor; if 0, use 1 raw unit
+probeAmount     = max(fillAmount / 1000, 10^(decimalsIn - 4))   // floored, capped at fillAmount
 referencePrice  = normalized quote(probeAmount)
 executionPrice  = normalized quote(fillAmount)
 priceImpactBps  = ceil( (referencePrice - executionPrice) * 10000 / referencePrice )
 ```
 
-The probe amount is normatively fixed at 0.1% of `fillAmount` (minimum one raw unit) — small enough that its own footprint is negligible, large enough to always be a valid order. `priceImpactBps` is negative when the execution price is favorable; only a positive value above `maxSlippageBps` skips. The ceil direction is deliberate: at the comparison boundary, ambiguity resolves in the user's favor.
+The probe is normatively 0.1% of `fillAmount`, lifted to a floor of `10^(decimalsIn - 4)` — 1/10000 of a whole tokenIn unit, quotable on 6-decimal tokens and far below ordinary fills on 18-decimal ones — and capped at the fill itself. **When the fill is below the floor, the fill is its own probe: `referencePrice == executionPrice`, the impact measurement is undefined, and it is not applied** — the fill settles with `impactChecked = false` on the event, and the absolute `[minPrice, maxPrice]` bounds are the only price protection for it. `priceImpactBps` is negative when the execution price is favorable; only a positive value above `maxSlippageBps` skips. The ceil direction is deliberate: at the comparison boundary, ambiguity resolves in the user's favor.
 
 The absolute check is independent: the normalized `executionPrice` must satisfy `minPrice <= executionPrice <= maxPrice`. Both checks run; passing one never implies the other. The property that makes the dual-quote design sound is quote/swap consistency of the official router — the static quote executes the same program as the swap — and it is asserted by a dedicated test at the integration milestone.
 
