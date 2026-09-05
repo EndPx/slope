@@ -60,7 +60,7 @@ Reproduce with: clone this repo → `git submodule update --init` → inside `co
 
 ## Runbook (re-run any stage independently)
 
-Signer: the foundry keystore account (`--account deployer --password-file ~/.foundry/pw`). Run from a **native filesystem** (WSL `~/slope-live` copy of `contracts/`) — broadcasting from `/mnt/*` (Windows DrvFs) fails on forge's broadcast-archive writes (EPERM) **before** transactions are sent.
+Signer: the foundry keystore account (`--account deployer --password-file ~/.foundry/pw`). Run from a **native filesystem** (WSL `~/slope-live` copy of `contracts/`) — broadcasting from `/mnt/*` (Windows DrvFs) fails on forge's broadcast-archive writes (EPERM) **before** transactions are sent. Two compounding causes in our setup: the repository path contains **spaces** (`Hackacton yang masih jalan`), a classic tooling hazard, and DrvFs' permission layer is unreliable for the copy/rename operations forge performs on its broadcast artifacts. The native-FS copy is byte-identical to the repo (same sources, same pinned submodules), so provenance is unaffected; the repo remains the canonical source of truth.
 
 ```bash
 cd ~/slope-live   # native-FS copy of contracts/ (sources identical to the repo)
