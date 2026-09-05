@@ -6,8 +6,8 @@ import {SlopePosition} from "@/SlopePosition.sol";
 import {CurveMath} from "@/math/CurveMath.sol";
 import {AquaRoute, CreateParams, CurveShape, ISlopeEvents, Position, SlopeErrors} from "@/SlopeTypes.sol";
 import {IAquaSwapVMRouter} from "@/interfaces/IAquaSwapVMRouter.sol";
-import {MockERC20} from "test/mocks/MockERC20.sol";
-import {MockAquaRouter} from "test/mocks/MockAquaRouter.sol";
+import {MockERC20} from "@test/mocks/MockERC20.sol";
+import {MockAquaRouter} from "@test/mocks/MockAquaRouter.sol";
 
 /// @dev Full lifecycle integration: create, execute the exact schedule on
 /// every simulated tick, complete via the terminal clamp, and verify that

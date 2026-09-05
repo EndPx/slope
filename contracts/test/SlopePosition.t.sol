@@ -6,8 +6,8 @@ import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {SlopePosition} from "@/SlopePosition.sol";
 import {AquaRoute, CreateParams, CurveShape, ISlopeEvents, Position, SkipReason, SlopeErrors} from "@/SlopeTypes.sol";
 import {IAquaSwapVMRouter} from "@/interfaces/IAquaSwapVMRouter.sol";
-import {MockERC20} from "test/mocks/MockERC20.sol";
-import {MockAquaRouter} from "test/mocks/MockAquaRouter.sol";
+import {MockERC20} from "@test/mocks/MockERC20.sol";
+import {MockAquaRouter} from "@test/mocks/MockAquaRouter.sol";
 
 contract SlopePositionTest is Test, ISlopeEvents {
     SlopePosition internal slope;
