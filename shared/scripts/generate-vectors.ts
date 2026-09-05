@@ -13,12 +13,21 @@ const outPath = join(scriptDir, "../../contracts/test/vectors/curve-vectors.json
 
 const elapsed: bigint[] = [];
 const duration: bigint[] = [];
+const shape: number[] = [];
 const expectedProgress: bigint[] = [];
+const shapeCases: Array<{ id: number; label: string }> = [
+  { id: 0, label: "aggressive" },
+  { id: 1, label: "neutral" },
+  { id: 2, label: "conservative" },
+];
 for (const d of [1000n, 86400n, 604800n, 2592000n]) {
   for (const e of [0n, 1n, 7n, d / 4n, d / 2n, (3n * d) / 4n, d - 1n, d]) {
-    elapsed.push(e);
-    duration.push(d);
-    expectedProgress.push(progress(e, d, Shape.NEUTRAL));
+    for (const s of shapeCases) {
+      elapsed.push(e);
+      duration.push(d);
+      shape.push(s.id);
+      expectedProgress.push(progress(e, d, s.id as 0 | 1 | 2));
+    }
   }
 }
 
@@ -32,6 +41,7 @@ const priceCases: Array<{ amountOut: bigint; decimalsOut: number; amountIn: bigi
 const payload = {
   elapsed: elapsed.map(String),
   duration: duration.map(String),
+  shape,
   expectedProgress: expectedProgress.map(String),
   pAmountOut: priceCases.map((c) => String(c.amountOut)),
   pDecimalsOut: priceCases.map((c) => c.decimalsOut),

@@ -18,12 +18,14 @@ contract CurveVectorsTest is Test {
         string memory json = vm.readFile(VECTORS);
         uint256[] memory elapsed = vm.parseJsonUintArray(json, ".elapsed");
         uint256[] memory duration = vm.parseJsonUintArray(json, ".duration");
+        uint256[] memory shape = vm.parseJsonUintArray(json, ".shape");
         uint256[] memory expected = vm.parseJsonUintArray(json, ".expectedProgress");
         assertEq(elapsed.length, duration.length);
+        assertEq(elapsed.length, shape.length);
         assertEq(elapsed.length, expected.length);
         for (uint256 i = 0; i < elapsed.length; i++) {
             assertEq(
-                CurveMath.progress(elapsed[i], duration[i], CurveShape.NEUTRAL),
+                CurveMath.progress(elapsed[i], duration[i], CurveShape(uint8(shape[i]))),
                 expected[i],
                 "progress vector mismatch"
             );
