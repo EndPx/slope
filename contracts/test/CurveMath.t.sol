@@ -91,14 +91,14 @@ contract CurveMathTest is Test {
 
     function test_MidpointShapes_AggressiveAboveNeutralAboveConservative() external pure {
         // The whole product claim rests on the curves being ordered the way
-        // their names say: front-loaded > linear > back-loaded.
+        // their names say: front-loaded > linear > back-loaded. AGGRESSIVE
+        // is asserted exactly: floor(sqrt(0.5e18 * 1e18)) = 707106781186547524.
         uint256 neutral = CurveMath.progress(500, 1000, CurveShape.NEUTRAL);
         uint256 aggressive = CurveMath.progress(500, 1000, CurveShape.AGGRESSIVE);
         uint256 conservative = CurveMath.progress(500, 1000, CurveShape.CONSERVATIVE);
         assertEq(neutral, 5e17);
         assertEq(conservative, 25e16); // exact: (0.5e18)^2 / 1e18
-        assertGt(aggressive, 7e17); // sqrt(0.5)e18 ≈ 0.7071e18, floored
-        assertLt(aggressive, 71e16);
+        assertEq(aggressive, 707106781186547524); // exact: floor(sqrt(5e35))
         assertGt(aggressive, neutral);
         assertGt(neutral, conservative);
     }

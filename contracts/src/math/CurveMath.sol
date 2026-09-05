@@ -13,6 +13,7 @@ import {CurveShape} from "@/SlopeTypes.sol";
 /// multiplication.
 library CurveMath {
     error ElapsedExceedsDuration();
+    error UnsupportedShape();
 
     uint256 internal constant WAD = 1e18;
 
@@ -40,6 +41,8 @@ library CurveMath {
         if (shape == CurveShape.CONSERVATIVE) {
             return Math.mulDiv(r, r, WAD);
         }
-        revert ElapsedExceedsDuration(); // unreachable: CurveShape has three members
+        // Honest failure mode if a fourth CurveShape member is ever added
+        // without a branch here: never report a false duration problem.
+        revert UnsupportedShape();
     }
 }

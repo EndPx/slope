@@ -141,4 +141,51 @@ contract SlopeLifecycleTest is Test, ISlopeEvents {
         assertEq(tokenOut.balanceOf(alice), BUDGET);
         assertEq(tokenOut.balanceOf(address(slope)), 0);
     }
+
+    /// @dev Terminal path on a non-NEUTRAL shape (REVISION 3 semantics):
+    /// AGGRESSIVE fills 65e18 of its 100e18 budget inside the window —
+    /// authorized there is exactly 100e18 * floor(sqrt(5e35)) / 1e18 =
+    /// 70710678118654752400 — leaving a 35e18 remainder BELOW minFill
+    /// 60e18. Long after the window the terminal clamp authorizes the
+    /// exact remainder, bypasses minFill, and completes the position with
+    /// the budget exact.
+    function test_Lifecycle_AggressivePartialFillThenTerminalSettlement() external {
+        vm.startPrank(alice);
+        tokenIn.approve(address(slope), type(uint256).max);
+        uint256 id = slope.createPosition(
+            CreateParams({
+                tokenIn: address(tokenIn),
+                tokenOut: address(tokenOut),
+                totalBudget: BUDGET,
+                minFillAmount: 60e18,
+                duration: DURATION,
+                curveShape: CurveShape.AGGRESSIVE,
+                minPrice: 0.5e18,
+                maxPrice: 2e18,
+                maxSlippageBps: 500
+            }),
+            AquaRoute({
+                router: router,
+                order: IAquaSwapVMRouter.Order({maker: makeAddr("maker"), traits: 1 << 254, data: hex"1100"}),
+                takerTraitsAndData: hex"000000000000000000000000000000000000000041"
+            })
+        );
+        vm.stopPrank();
+
+        vm.warp(1 + 500);
+        assertTrue(slope.adaptiveExecute(id, 65e18)); // fills 65e18, capped by maxAmountIn
+        (Position memory pMid, ) = slope.getPosition(id);
+        assertEq(pMid.executedAmount, 65e18);
+        assertLt(BUDGET - pMid.executedAmount, 60e18); // remainder below minFill
+
+        vm.warp(1 + DURATION * 3 + 111);
+        vm.expectEmit(true, false, false, false, address(slope));
+        emit PositionCompleted(id);
+        assertTrue(slope.adaptiveExecute(id, BUDGET)); // terminal bypass settles 35e18
+        (Position memory p, ) = slope.getPosition(id);
+        assertEq(p.executedAmount, BUDGET);
+        assertFalse(p.isActive);
+        assertEq(tokenOut.balanceOf(alice), BUDGET);
+        assertEq(tokenOut.balanceOf(address(slope)), 0);
+    }
 }

@@ -474,8 +474,8 @@ contract SlopePositionTest is Test, ISlopeEvents {
         (Position memory con, ) = slope.getPosition(conservativeId);
         assertEq(neu.executedAmount, 50e18);
         assertEq(con.executedAmount, 25e18);
-        assertGt(agg.executedAmount, 70e18); // sqrt(0.5)e18 * 100e18 ≈ 70.71e18
-        assertLt(agg.executedAmount, 71e18);
+        // Exact: 100e18 * floor(sqrt(5e35)) / 1e18 = 70710678118654752400.
+        assertEq(agg.executedAmount, 70710678118654752400);
         assertGt(agg.executedAmount, neu.executedAmount);
         assertGt(neu.executedAmount, con.executedAmount);
     }
