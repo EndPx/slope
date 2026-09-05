@@ -1,0 +1,10 @@
+{
+  "name": "@slope/shared",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node --test test/curve.test.ts test/price.test.ts",
+    "vectors": "node scripts/generate-vectors.ts"
+  }
+}
