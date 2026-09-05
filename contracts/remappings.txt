@@ -1,4 +1,6 @@
 @/=src/
 @test/=test/
+swap-vm-libs/=lib/swap-vm/src/libs/
+@1inch/solidity-utils/=lib/swap-vm/node_modules/@1inch/solidity-utils/
 @openzeppelin/contracts/=lib/openzeppelin-contracts/contracts/
 forge-std/=lib/forge-std/src/
