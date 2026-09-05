@@ -37,8 +37,8 @@ Liquidity seeding (maker = deployer = `0xc82f469Aa95a2f7792300c8d11230e9023A9860
 
 ### On-chain execution evidence (the 1inch prize requirement)
 
-- **Terminal settlement fill** — position #1, after its window: exactly **10 dETH in → 29,632.91 dUSD out** through the official pull/push flow, `FillExecuted` + `PositionCompleted`: tx [`0x3ca31dd7488ad4303a5822bed5c085a95dc8b71c329336e72528421430b28c70`](https://sepolia.basescan.org/tx/0x3ca31dd7488ad4303a5822bed5c085a95dc8b71c329336e72528421430b28c70).
-- **Natural mid-window fill** — position #2, created and filled while the curve was live (elapsed ≈ 55 s of 1000): exactly **0.5 dETH in → 1,469.98 dUSD out**, `executedAmount = 0.5e18`, position still **active** (no completion event): tx [`0xf46ae64daeeca8a51e98ebbdad4e1b63832cc87e12ca2122cca92684c4c555a6`](https://sepolia.basescan.org/tx/0xf46ae64daeeca8a51e98ebbdad4e1b63832cc87e12ca2122cca92684c4c555a6). Price 2939.96 dUSD/dETH is consistent with the spot after fill #1 moved the shared-liquidity state (~2941) — the curve math tracks reality.
+- **Terminal settlement fill** — position #1, after its window: exactly **10 dETH in → 29,702.97 dUSD out** through the official pull/push flow, `FillExecuted` + `PositionCompleted`: tx [`0x3ca31dd7488ad4303a5822bed5c085a95dc8b71c329336e72528421430b28c70`](https://sepolia.basescan.org/tx/0x3ca31dd7488ad4303a5822bed5c085a95dc8b71c329336e72528421430b28c70).
+- **Natural mid-window fill** — position #2, created and filled while the curve was live (elapsed ≈ 55 s of 1000): exactly **0.5 dETH in → 1,469.72 dUSD out**, `executedAmount = 0.5e18`, position still **active** (no completion event): tx [`0xf46ae64daeeca8a51e98ebbdad4e1b63832cc87e12ca2122cca92684c4c555a6`](https://sepolia.basescan.org/tx/0xf46ae64daeeca8a51e98ebbdad4e1b63832cc87e12ca2122cca92684c4c555a6). Price 2939.43 dUSD/dETH is consistent with the spot after fill #1 moved the shared-liquidity state (~2941) — the curve math tracks reality.
 - Post-fill maker virtual balance: 1010.5 dETH (1000 seed + 10 + 0.5 pushed) — exactly the sum of both fills.
 
 ## Source provenance (what the deployed bytecode was built from)

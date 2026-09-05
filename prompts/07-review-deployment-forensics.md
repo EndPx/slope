@@ -10,7 +10,7 @@ Resolution (verified on-chain): every deterministic deployment address from thos
 
 ## 2. The natural path was never proven on-chain
 
-The successful 10-dETH fill went through the **terminal clamp**, not the curve. The production-heavy path — staged fills following the curve inside the window — had only mock/fork evidence. Required before demo recording: at least one position filled naturally mid-window. Executed on-chain: position #2, filled at elapsed ≈ 55 s of 1000 — exactly 0.5 dETH in → 1,469.98 dUSD out, `executedAmount = 0.5e18` partial, position still active, price 2939.96 consistent with post-fill-1 spot. Also verified: the impact math (~1.22% for a 1%-of-pool fill against the 3000 spot) is internally consistent.
+The successful 10-dETH fill went through the **terminal clamp**, not the curve. The production-heavy path — staged fills following the curve inside the window — had only mock/fork evidence. Required before demo recording: at least one position filled naturally mid-window. Executed on-chain: position #2, filled at elapsed ≈ 55 s of 1000 — exactly 0.5 dETH in → 1,469.72 dUSD out, `executedAmount = 0.5e18` partial, position still active, price 2939.43 consistent with post-fill-1 spot. Also verified: the impact math (~0.99% for a 1%-of-pool fill against the 3000 spot) is internally consistent.
 
 ## 3. Provenance traceability from the submission repo
 
