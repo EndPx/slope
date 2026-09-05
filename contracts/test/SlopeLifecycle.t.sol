@@ -4,7 +4,7 @@ pragma solidity 0.8.30;
 import {Test} from "forge-std/Test.sol";
 import {SlopePosition} from "@/SlopePosition.sol";
 import {CurveMath} from "@/math/CurveMath.sol";
-import {AquaRoute, CreateParams, CurveShape, ISlopeEvents, Position, SlopeErrors} from "@/SlopeTypes.sol";
+import {AquaRoute, CreateParams, CurveShape, ISlopeEvents, Position, SkipReason, SlopeErrors} from "@/SlopeTypes.sol";
 import {IAquaSwapVMRouter} from "@/interfaces/IAquaSwapVMRouter.sol";
 import {MockERC20} from "@test/mocks/MockERC20.sol";
 import {MockAquaRouter} from "@test/mocks/MockAquaRouter.sol";
@@ -182,6 +182,62 @@ contract SlopeLifecycleTest is Test, ISlopeEvents {
         vm.expectEmit(true, false, false, false, address(slope));
         emit PositionCompleted(id);
         assertTrue(slope.adaptiveExecute(id, BUDGET)); // terminal bypass settles 35e18
+        (Position memory p, ) = slope.getPosition(id);
+        assertEq(p.executedAmount, BUDGET);
+        assertFalse(p.isActive);
+        assertEq(tokenOut.balanceOf(alice), BUDGET);
+        assertEq(tokenOut.balanceOf(address(slope)), 0);
+    }
+
+    /// @dev Terminal path on CONSERVATIVE with exact numbers: at elapsed
+    /// 900 the back-loaded schedule authorizes (0.9)^2 = 81% of the budget
+    /// — the only in-window moment the 80e18 min fill is cleared — leaving
+    /// a 19e18 tail BELOW minFill. Long after the window the terminal clamp
+    /// authorizes the exact remainder, bypasses minFill, and completes the
+    /// position with the budget exact.
+    function test_Lifecycle_ConservativeTailBelowMinFill_SettlesPastTheWindow() external {
+        uint256 minFill = 80e18;
+        vm.startPrank(alice);
+        tokenIn.approve(address(slope), type(uint256).max);
+        uint256 id = slope.createPosition(
+            CreateParams({
+                tokenIn: address(tokenIn),
+                tokenOut: address(tokenOut),
+                totalBudget: BUDGET,
+                minFillAmount: minFill,
+                duration: DURATION,
+                curveShape: CurveShape.CONSERVATIVE,
+                minPrice: 0.5e18,
+                maxPrice: 2e18,
+                maxSlippageBps: 500
+            }),
+            AquaRoute({
+                router: router,
+                order: IAquaSwapVMRouter.Order({maker: makeAddr("maker"), traits: 1 << 254, data: hex"1100"}),
+                takerTraitsAndData: hex"000000000000000000000000000000000000000041"
+            })
+        );
+        vm.stopPrank();
+
+        // Mid-window: back-loaded schedule authorizes only 25e18 < 80e18 —
+        // the fill is skipped, proving minFill actually gates this shape.
+        vm.warp(1 + 50); // elapsed 50 of 100: (0.5)^2 = 25% authorized
+        vm.expectEmit(true, false, false, true, address(slope));
+        emit PositionSkipped(id, SkipReason.MIN_FILL);
+        assertFalse(slope.adaptiveExecute(id, 25e18));
+
+        // Late window: 81% authorized clears the min fill.
+        vm.warp(1 + 90); // elapsed 90 of 100: (0.9)^2 = 81% -> 81e18 (exact)
+        assertTrue(slope.adaptiveExecute(id, 81e18));
+        (Position memory pMid, ) = slope.getPosition(id);
+        assertEq(pMid.executedAmount, 81e18);
+        assertLt(BUDGET - pMid.executedAmount, minFill); // 19e18 tail
+
+        // WELL past the window: the terminal clamp settles the tail.
+        vm.warp(1 + DURATION * 3 + 999);
+        vm.expectEmit(true, false, false, false, address(slope));
+        emit PositionCompleted(id);
+        assertTrue(slope.adaptiveExecute(id, BUDGET));
         (Position memory p, ) = slope.getPosition(id);
         assertEq(p.executedAmount, BUDGET);
         assertFalse(p.isActive);
