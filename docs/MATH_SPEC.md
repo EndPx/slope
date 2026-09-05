@@ -54,7 +54,7 @@ Properties, each of which is a hard test obligation:
 3. **Range.** `r ∈ [0, 1e18]` implies all three outputs lie in `[0, 1e18]`.
 4. **Overflow safety.** `r ≤ 1e18`, so `r² ≤ 1e36 ≪ 2^256`; all products go through `mulDiv` regardless.
 
-**Terminal clamp.** For `elapsed >= duration`, `authorizedCumulative` is set to `totalBudget` directly — the progress formula is bypassed entirely, so accumulated rounding can never strand a remainder. Note the window edge semantics: execution is permitted while `elapsed <= duration` (the clamp makes the final remainder exact at exactly `duration`); calls with `elapsed > duration` are refused because the position has expired.
+**Terminal clamp.** For `elapsed >= duration`, `authorizedCumulative` is set to `totalBudget` directly — the progress formula is bypassed entirely, so accumulated rounding can never strand a remainder. The schedule input is clamped to the window (an `elapsed` beyond `duration` evaluates at `duration`), and calls past the window keep working: they authorize exactly the unexecuted remainder until the budget is exhausted — `duration` bounds the schedule, not the position's liveness (REVISION 3).
 
 There is no generic power, no logarithm, no exponential anywhere in the kernel. The only non-linear primitive is the floor square root of a pinned, battle-tested implementation.
 

@@ -16,6 +16,7 @@ contract MockAquaRouter is IAquaSwapVMRouter {
     uint256 public priceWad = 1e18;
     uint256 public largeFillThreshold = 10e18;
     uint256 public largeFillPenaltyBps = 0;
+    uint256 public zeroQuoteBelow = 0;
 
     function setPriceWad(uint256 priceWad_) external {
         priceWad = priceWad_;
@@ -24,6 +25,10 @@ contract MockAquaRouter is IAquaSwapVMRouter {
     function setLargeFillPenalty(uint256 threshold, uint256 penaltyBps) external {
         largeFillThreshold = threshold;
         largeFillPenaltyBps = penaltyBps;
+    }
+
+    function setZeroQuoteBelow(uint256 threshold) external {
+        zeroQuoteBelow = threshold;
     }
 
     function quote(
@@ -51,6 +56,7 @@ contract MockAquaRouter is IAquaSwapVMRouter {
     }
 
     function _quote(uint256 amount) internal view returns (uint256) {
+        if (amount < zeroQuoteBelow) return 0;
         uint256 amountOut = Math.mulDiv(amount, priceWad, 1e18);
         if (amount >= largeFillThreshold && largeFillPenaltyBps > 0) {
             amountOut -= Math.mulDiv(amountOut, largeFillPenaltyBps, 10_000);

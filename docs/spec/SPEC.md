@@ -4,6 +4,15 @@
 
 ## CHANGELOG
 
+### REVISION 3 — 2026-09-05: Reachable terminal settlement, probe floor, QUOTE_INVALID
+Review-pass corrections to the step-1 implementation:
+
+1. **Terminal settlement is reachable — the hard expiry revert is removed.** The original text ("revert ... startTimestamp + duration has passed") made the terminal clamp reachable only at exactly `elapsed == duration` — a one-second window a polling keeper will miss, stranding the remainder forever. `duration` is the **execution schedule, not a forfeiture deadline**: past the window the schedule input is clamped at 100%, every call keeps authorizing the exact unexecuted remainder, and the position completes when the budget is exhausted. Nothing is ever forfeited, so no forfeiture-handling path needs to exist. Section 3 step 1 now reverts only for inactive positions. Propagated to PRODUCT_SPEC (§2, §4, §8) and MATH_SPEC (§3).
+2. **Probe floor derived from `decimalsIn`.** The floored probe (`fillAmount / 1000`) could collapse to 1 wei on 6-decimal tokens; a 1-wei quote plausibly returns zero output, stranding positions behind a misleading skip. The probe is now `max(fillAmount / 1000, 10^(decimalsIn - 2))`, capped at the fill itself — 0.01 whole tokenIn units, a notional routers price meaningfully. If the fill is smaller than the floor, the fill is its own probe and the impact check is vacuous by definition.
+3. **`SkipReason.QUOTE_INVALID` added.** A zero or unpriceable quote is a quote-quality failure and is reported separately from `IMPACT`; collapsing them made logs and the Subgraph claim market moves that never happened.
+
+Two open items are now tracked in the appendix (OI-1 exact-in consumption semantics; OI-2 minimum-output threshold in `takerTraitsAndData`).
+
 ### REVISION 2 — 2026-09-05: Position mechanics — gaps closed before step 1
 Six issues found in the Position struct and AdaptiveExecute logic. Items 1, 2, 3 and 5 are BLOCKING for step 1 (contract + test suite); item 4 blocks once Aqua integration starts; item 6 must be decided before the keeper is built; item 7 is non-blocking.
 
@@ -179,7 +188,7 @@ Each position (order) created by a user is stored as a struct with at least the 
 - isActive (bool) — position status, false once finished/cancelled
 
 The AdaptiveExecute instruction (execution function) is **permissionless — anyone may call it** `[REVISION 2 / DECISION 12]` (liveness over caller restriction; the contract itself is authoritative on every constraint — see the decision log for the README wording consequence). It accepts `positionId` and `maxAmountIn` as parameters `[REVISION 1 — see CHANGELOG; the original spec only accepted positionId]`, and performs the following steps inside the contract:
-1. Load the position by positionId, revert if isActive is false or startTimestamp + duration has passed.
+1. Load the position by positionId; revert if `isActive` is false. `[REVISION 3]` Past the window the schedule is clamped at 100% — the remainder stays executable and the position completes when the budget is exhausted; `duration` is the schedule, not a forfeiture deadline.
 2. Compute elapsed = block.timestamp - startTimestamp.
 3. Compute authorizedCumulative = totalBudget * curveFunction(elapsed, duration, curveShape) — curveFunction returns a fraction (0 to 1e18 as fixed-point representation of 0.0 to 1.0) representing what percentage of totalBudget SHOULD have been executed at this point in time according to the selected curve. `[REVISION 2 — terminal clamp]` If elapsed >= duration, set authorizedCumulative = totalBudget directly, bypassing the curve formula entirely — guaranteeing the final fill authorizes the exact remainder with no rounding drift.
 4. Compute authorizedNow = authorizedCumulative - executedAmount. If authorizedNow <= 0, revert or return without doing anything (not yet time to execute the next portion according to the curve schedule). `[REVISION 1]` Next compute fillAmount = min(authorizedNow, maxAmountIn). If fillAmount <= 0, return early without doing anything. `[REVISION 2]` If fillAmount < minFillAmount AND elapsed < duration, return early — except on final settlement (elapsed >= duration), where the remainder is allowed through even below the minimum. All subsequent steps use fillAmount, not authorizedNow.
@@ -327,6 +336,10 @@ Build in the priority order in section 9, using the stack fixed in PART 2 (do no
 **NOTE (REVISION 2, item 7)**: concrete competitive research is maintained in separate internal pitch-preparation notes, not in this spec — but a specific "how is this different from X?" answer must be ready for live-judging Q&A.
 
 **DECISION 13 — Aqua route target inside the locked signature (2026-09-05)**: The locked `AdaptiveExecute(positionId, maxAmountIn)` signature carries no route information, yet a fill must target a specific maker strategy on Aqua. Decision (Option A): each position stores its Aqua route — `AquaRoute {router, order (maker + strategy bytes), takerTraitsAndData}` — provided at creation and owner-replaceable via `updateRoute` (owner-only, active positions only). Rationale: changing the route never changes what the curve authorizes (schedule, bounds, and impact checks apply unchanged to any route), only the owner is affected by their own route choice, and permissionless liveness is preserved. Upgrade path (planned, per creator): if the step-3 integration with the real router demonstrates measurable multi-route improvement, migrate to passing the route in calldata (aggregator-style) through a formal REVISION 3 — at that point the contract is already tested, so the signature-change risk is far smaller.
+
+**OPEN ITEMS (tracked; must close at or before step 3):**
+- **OI-1 — exact-in consumption semantics**: `executedAmount` increments by the requested `fillAmount`, assuming the official router's exact-in swap always consumes the full requested input. Verify at step 3 on the real router; if partial consumption is possible, increment by the swap-returned input instead (a code comment marks the location).
+- **OI-2 — minimum-output threshold on `swap`**: the quote-level impact check must be complemented by a hard `threshold` carried in `takerTraitsAndData` at the swap level. Confirm and set it when the real route is wired.
 
 **VERIFIED IMPLEMENTATION NOTES (2026-09-05 research)**:
 - There is no separate Lens/Quoter contract in Aqua — the official price/quote surface is `AquaSwapVMRouter.quote(order, tokenIn, tokenOut, amount, takerTraitsAndData)` (static eth_call, selector `0x44aa5f14`), executing the same program as `swap`. This satisfies Section 3 step 5's "read price from official Aqua" requirement.

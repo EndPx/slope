@@ -19,6 +19,7 @@ enum SkipReason {
     MIN_FILL,
     BOUNDS,
     IMPACT,
+    QUOTE_INVALID,
     TRANSFER_FAILED
 }
 
@@ -97,7 +98,6 @@ interface ISlopeEvents {
 
 library SlopeErrors {
     error PositionNotActive();
-    error PositionExpired();
     error NotOwner();
     error UnsupportedShape();
     error InvalidToken();

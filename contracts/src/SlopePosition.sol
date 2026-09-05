@@ -142,14 +142,16 @@ contract SlopePosition is ISlopeEvents, ReentrancyGuard {
         if (!p.isActive) revert SlopeErrors.PositionNotActive();
         AquaRoute storage r = _routes[positionId];
 
+        // Schedule (docs/MATH_SPEC.md section 3-4, REVISION 3). `duration`
+        // is the execution schedule, not a forfeiture deadline: past the
+        // window the schedule is clamped at 100% and the exact remainder
+        // stays executable until the budget is exhausted — nothing is ever
+        // forfeited, and the position completes whenever the last unit
+        // actually executes.
         uint256 elapsed = block.timestamp - p.startTimestamp;
-        if (elapsed > p.duration) revert SlopeErrors.PositionExpired();
-
-        // Schedule (docs/MATH_SPEC.md section 3-4). The terminal clamp at
-        // `elapsed >= duration` authorizes the exact remainder regardless of
-        // accumulated rounding, so completion is always reachable.
-        uint256 progress_ = CurveMath.progress(elapsed, p.duration, p.curveShape);
-        uint256 authorizedCumulative = elapsed >= p.duration
+        uint256 scheduleElapsed = elapsed < p.duration ? elapsed : p.duration;
+        uint256 progress_ = CurveMath.progress(scheduleElapsed, p.duration, p.curveShape);
+        uint256 authorizedCumulative = scheduleElapsed == p.duration
             ? p.totalBudget
             : Math.mulDiv(p.totalBudget, progress_, WAD);
         uint256 authorizedNow = authorizedCumulative - p.executedAmount;
@@ -159,7 +161,7 @@ contract SlopePosition is ISlopeEvents, ReentrancyGuard {
             emit PositionSkipped(positionId, SkipReason.NOT_DUE);
             return false;
         }
-        if (fillAmount < p.minFillAmount && elapsed < p.duration) {
+        if (fillAmount < p.minFillAmount && scheduleElapsed < p.duration) {
             emit PositionSkipped(positionId, SkipReason.MIN_FILL);
             return false;
         }
@@ -167,8 +169,15 @@ contract SlopePosition is ISlopeEvents, ReentrancyGuard {
         // Dual quotes on the route's router: the probe approximates the spot
         // price, the execution quote is the real size. Both run the same
         // program, so their difference is the fill's own footprint.
+        // Probe floor (REVISION 3): 0.01 whole tokenIn units, derived from
+        // the cached decimals. Prevents floored division from collapsing the
+        // probe to a dust notional the router prices at zero on 6-decimal
+        // tokens. When the fill itself is smaller than the floor, the fill
+        // is its own probe and the impact check is vacuous — negligible by
+        // definition.
         uint256 probeAmount = fillAmount / PROBE_DENOMINATOR;
-        if (probeAmount == 0) probeAmount = 1;
+        uint256 probeFloor = p.decimalsIn >= 2 ? 10 ** (p.decimalsIn - 2) : 1;
+        if (probeAmount < probeFloor) probeAmount = probeFloor < fillAmount ? probeFloor : fillAmount;
         (, uint256 probeOut,) = r.router.quote(r.order, p.tokenIn, p.tokenOut, probeAmount, r.takerTraitsAndData);
         (uint256 quotedIn, uint256 amountOut,) = r.router.quote(r.order, p.tokenIn, p.tokenOut, fillAmount, r.takerTraitsAndData);
 
@@ -177,7 +186,11 @@ contract SlopePosition is ISlopeEvents, ReentrancyGuard {
         (bool okExec, uint256 executionPrice) =
             PriceMath.tryNormalizePrice(amountOut, p.decimalsOut, quotedIn, p.decimalsIn);
         if (!okRef || !okExec || referencePrice == 0) {
-            emit PositionSkipped(positionId, SkipReason.IMPACT);
+            // A zero or unpriceable quote is a quote-quality failure, not an
+            // impact failure — the two are reported separately (REVISION 3)
+            // so logs and the Subgraph never claim a market move that did
+            // not happen.
+            emit PositionSkipped(positionId, SkipReason.QUOTE_INVALID);
             return false;
         }
         if (executionPrice < p.minPrice || executionPrice > p.maxPrice) {
@@ -200,6 +213,10 @@ contract SlopePosition is ISlopeEvents, ReentrancyGuard {
         _ensureRouterAllowance(p.tokenIn, address(r.router), fillAmount);
         (, uint256 swappedOut,) = r.router.swap(r.order, p.tokenIn, p.tokenOut, fillAmount, r.takerTraitsAndData);
 
+        // OPEN ITEM OI-1 (SPEC appendix, verify at step 3): the official
+        // router's exact-in swap is assumed to always consume the full
+        // requested input. If step-3 verification shows partial consumption,
+        // increment by the swap-returned input instead of `fillAmount`.
         p.executedAmount += fillAmount;
         _sweep(p.tokenOut, p.owner);
         emit FillExecuted(positionId, fillAmount, swappedOut, executionPrice, block.timestamp);
@@ -225,14 +242,23 @@ contract SlopePosition is ISlopeEvents, ReentrancyGuard {
         return callOk && (ret.length == 0 || abi.decode(ret, (bool)));
     }
 
+    /// @dev Deliberately unlimited allowance to the route's router: the
+    /// router address is chosen by the position owner, the contract holds no
+    /// funds between fills, so exposure is bounded to the single fill in
+    /// flight — a risk the owner accepts by choosing the route. Not an
+    /// oversight; revisit only if a custody-bearing refactor ever lands.
     function _ensureRouterAllowance(address token, address router, uint256 amount) private {
         if (IERC20(token).allowance(address(this), router) < amount) {
             IERC20(token).forceApprove(router, type(uint256).max);
         }
     }
 
-    /// @dev Forwards the tokenOut received in this fill to the owner. The
-    /// contract's tokenOut balance is zero between fills by invariant.
+    /// @dev Forwards the contract's entire tokenOut balance to `to`. The
+    /// contract holds no tokenOut between fills — this only ever moves the
+    /// current fill's proceeds. Known edge case, accepted at MVP scope:
+    /// tokenOut donated directly to the contract by an unrelated party is
+    /// swept to the next position's owner; per-position donation accounting
+    /// is deliberately not added.
     function _sweep(address token, address to) private {
         uint256 balance = IERC20(token).balanceOf(address(this));
         if (balance > 0) IERC20(token).safeTransfer(to, balance);

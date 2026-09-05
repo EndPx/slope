@@ -332,11 +332,22 @@ contract SlopePositionTest is Test, ISlopeEvents {
     // adaptiveExecute: window edges and completion
     // ------------------------------------------------------------------
 
-    function test_Execute_PastDuration_Reverts() external {
+    function test_Execute_LongAfterDuration_SettlesRemainderAndCompletes() external {
         uint256 id = _create();
-        vm.warp(T0 + DURATION + 1);
-        vm.expectRevert(SlopeErrors.PositionExpired.selector);
-        slope.adaptiveExecute(id, 50e18);
+        // Only half the schedule executes during the window.
+        vm.warp(T0 + 500);
+        assertTrue(slope.adaptiveExecute(id, 50e18));
+
+        // WELL past the window — not the exact second — the remainder is
+        // still authorized, the position completes, and nothing is forfeited.
+        vm.warp(T0 + DURATION * 3 + 777);
+        vm.expectEmit(true, false, false, false, address(slope));
+        emit PositionCompleted(id);
+        assertTrue(slope.adaptiveExecute(id, BUDGET));
+        (Position memory p, ) = slope.getPosition(id);
+        assertEq(p.executedAmount, BUDGET);
+        assertFalse(p.isActive);
+        assertEq(tokenOut.balanceOf(alice), BUDGET);
     }
 
     function test_Execute_TerminalClampBypassesMinFillAndCompletes() external {
@@ -379,6 +390,45 @@ contract SlopePositionTest is Test, ISlopeEvents {
         assertTrue(slope.adaptiveExecute(id, 50e18));
         (Position memory p, ) = slope.getPosition(id);
         assertEq(p.executedAmount, 50e18);
+    }
+
+    function test_Execute_SmallFillOnSixDecimalToken_ProbeDoesNotStrand() external {
+        // Regression test (review pass): on a 6-decimal tokenIn the floored
+        // probe (fill/1000) used to collapse to 1 wei, whose quote returns
+        // zero and stranded the position on a misleading IMPACT skip.
+        // The decimal-derived probe floor keeps the probe meaningful.
+        MockERC20 usdcIn = new MockERC20("USDC", "USDC", 6);
+        usdcIn.mint(alice, 100e6);
+        // 1:1 economic price across decimals: rawOut = rawIn * 1e12.
+        router.setPriceWad(1e30);
+
+        vm.startPrank(alice);
+        usdcIn.approve(address(slope), type(uint256).max);
+        CreateParams memory params = _defaultParams();
+        params.tokenIn = address(usdcIn);
+        params.totalBudget = 100e6;
+        params.minFillAmount = 1e6; // 1 USDC
+        uint256 id = slope.createPosition(params, _route());
+        vm.stopPrank();
+
+        vm.warp(T0 + 10); // authorized: 1 USDC = 1e6 raw
+        // probe = max(1e6/1000, floor 1e4 = 0.01 USDC) = 1e4 raw — a real
+        // notional the router prices at 1e16 out. Nonzero, no stranding.
+        assertTrue(slope.adaptiveExecute(id, 1e6));
+        (Position memory p, ) = slope.getPosition(id);
+        assertEq(p.executedAmount, 1e6);
+        assertEq(tokenOut.balanceOf(alice), 1e18);
+    }
+
+    function test_Execute_DegenerateProbeQuote_SkipsQuoteInvalid_NotImpact() external {
+        uint256 id = _create();
+        // Every quote below max returns zero: a quote-quality failure must
+        // surface as QUOTE_INVALID, distinct from IMPACT.
+        router.setZeroQuoteBelow(type(uint256).max);
+        vm.warp(T0 + 500);
+        vm.expectEmit(false, false, false, true, address(slope));
+        emit PositionSkipped(id, SkipReason.QUOTE_INVALID);
+        assertFalse(slope.adaptiveExecute(id, 50e18));
     }
 
     // ------------------------------------------------------------------

@@ -105,7 +105,7 @@ Token decimals are read once at position creation and cached in the position (`d
 
 ### 4.3 Fill record
 
-Every successful fill emits `FillExecuted(positionId, amountIn, amountOut, executionPrice, timestamp)`; every skip emits a reason (`BOUNDS`, `IMPACT`, `MIN_FILL`, `TRANSFER_FAILED`, `EXPIRED`, `NOT_DUE`). Skips are first-class data: they are how the demo proves the guardrails are real.
+Every successful fill emits `FillExecuted(positionId, amountIn, amountOut, executionPrice, timestamp)`; every skip emits a reason (`NOT_DUE`, `MIN_FILL`, `BOUNDS`, `IMPACT`, `QUOTE_INVALID`, `TRANSFER_FAILED`). Skips are first-class data: they are how the demo proves the guardrails are real.
 
 ### 4.4 Aqua-side strategy encoding
 
@@ -258,7 +258,7 @@ The ten steps of SPEC section 3 are normative; the notable orderings are that qu
 
 ### 11.5 Completion and benchmark
 
-Near expiry the terminal clamp authorizes the exact remainder regardless of `minFillAmount`; the final fill settles, `isActive` flips false, `PositionCompleted` fires once, and the dashboard renders the benchmark verdict: actual VWAP vs. the linear-TWAP VWAP on the same window and budget.
+At or past the window's end, the terminal clamp authorizes the exact remainder regardless of `minFillAmount`; the final fill settles whenever it happens, `isActive` flips false, `PositionCompleted` fires once, and the dashboard renders the benchmark verdict: actual VWAP vs. the linear-TWAP VWAP on the same window and budget.
 
 ### 11.6 Seed liquidity lifecycle
 

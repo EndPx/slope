@@ -7,7 +7,7 @@ This document describes what the Slope product **is** and how the protocol behav
 Slope is a non-custodial execution protocol for takers. A user does not submit just an amount; the user publishes a bounded execution policy describing **how the order is allowed to unfold over time**:
 
 - a budget of `tokenIn` sold for `tokenOut`;
-- a window (`startTimestamp + duration`) during which execution may happen;
+- a schedule window (`duration`) over which the curve spreads execution — a remainder after the window still settles; nothing is forfeited;
 - a curve shape — AGGRESSIVE, NEUTRAL, or CONSERVATIVE — that schedules the cumulative fraction of budget that may have executed at each moment;
 - absolute price bounds and a per-fill price-impact limit;
 - a minimum fill size.
@@ -55,7 +55,7 @@ Integer rounding could otherwise leave a few wei authorized forever, hanging the
 1. **Terminal clamp**: for `elapsed >= duration`, `authorizedCumulative` is set to `totalBudget` directly — the exact remainder becomes authorized, bypassing curve rounding entirely.
 2. **Completion**: after a successful fill, if `executedAmount >= totalBudget` (or the remainder is at or below the dust threshold), the position is completed: `isActive = false` and `PositionCompleted` is emitted exactly once.
 
-The final settlement fill bypasses the `minFillAmount` floor — otherwise a remainder smaller than the floor could never execute and the position would hang. This exception exists only in the terminal window.
+The final settlement fill bypasses the `minFillAmount` floor — otherwise a remainder smaller than the floor could never execute and the position would hang. This exception exists only in the terminal window. Past the window the schedule stays clamped at 100%: the remainder remains executable until the budget is exhausted — `duration` bounds the schedule, not the position's life (REVISION 3).
 
 ## 5. Price Convention and Impact Measurement
 
@@ -107,7 +107,7 @@ Static policy parameters are immutable for the life of the position — there is
 
 `AdaptiveExecute(uint256 positionId, uint256 maxAmountIn)` — permissionless — performs:
 
-1. load the position; revert only if inactive or past duration;
+1. load the position; revert only if inactive (REVISION 3: past-window calls stay valid and settle the remainder);
 2. `elapsed`; progress; `authorizedCumulative` (terminal clamp applies);
 3. `authorizedNow`; `fillAmount = min(authorizedNow, maxAmountIn)`;
 4. skip if `fillAmount <= 0`, or below `minFillAmount` outside the terminal window;
@@ -126,7 +126,7 @@ Skips return early with a distinguishable event — they are first-class outcome
 | `BOUNDS` | Price outside `[minPrice, maxPrice]` | Wait for the market to return to the accepted range. |
 | `IMPACT` | `priceImpactBps > maxSlippageBps` | Wait for deeper/ calmer liquidity. |
 | `TRANSFER_FAILED` | Insufficient balance or revoked allowance | Park the position; a persistent failure is a user decision, not a glitch. |
-| `EXPIRED` | Past duration | Terminal state; unexecuted budget is still in the user's wallet. |
+| `QUOTE_INVALID` | Probe or execution quote unusable (zero output) | Wait for a routable market; kept distinct from `IMPACT` so quote failures never masquerade as market moves. |
 
 ## 9. Position Lifecycle
 
