@@ -4,6 +4,18 @@ Everything deployed for the Slope demo, with the exact sources it was built from
 
 ## Live deployment — Base Sepolia (chainId 84532)
 
+**All five contracts are source-verified on Basescan** (2026-09-06) — judges can read the exact sources on the explorer:
+
+| Contract | Address | Verification |
+| --- | --- | --- |
+| AquaRegistry (`AquaRouter`, official aqua package 0.1.0) | [`0xd2A8f6D7645F53aB23dC3EcB146a196026F964DA`](https://sepolia.basescan.org/address/0xd2A8f6D7645F53aB23dC3EcB146a196026F964DA#code) | ✅ verified |
+| AquaSwapVMRouter (official swap-vm tag `v1.0.2`) | [`0x054F6A7CE03fdEB7814977B0FE7017cc5B2d7DA2`](https://sepolia.basescan.org/address/0x054F6A7CE03fdEB7814977B0FE7017cc5B2d7DA2#code) | ✅ verified (constructor args: registry, WETH, owner, `"AquaSwapVMRouter"`, `"1.0.2"`) |
+| dETH demo token (18 dec) | [`0xD524e3d9E7f0B419A862B4Ad854422d573B5D651`](https://sepolia.basescan.org/address/0xD524e3d9E7f0B419A862B4Ad854422d573B5D651#code) | ✅ verified |
+| dUSD demo token (6 dec) | [`0x06A41268C8cA9d5ADa19b02a8E2f37A0195dC49c`](https://sepolia.basescan.org/address/0x06A41268C8cA9d5ADa19b02a8E2f37A0195dC49c#code) | ✅ verified |
+| SlopePosition | [`0xC7c6FaD1C2A0e8961E34D40c39C059ECE6dBB8Cc`](https://sepolia.basescan.org/address/0xC7c6FaD1C2A0e8961E34D40c39C059ECE6dBB8Cc#code) | ✅ verified |
+
+Reproduce verification with `forge verify-contract --chain-id 84532 --compiler-version 0.8.30 --num-of-optimizations 1000 --evm-version cancun --via-ir` using the contract identifiers recorded below (source keys match the build's `compilationTarget` exactly — the registry lives at `lib/swap-vm/node_modules/@1inch/aqua/src/AquaRouter.sol`, the path where the router's own lockfile pins `@1inch/aqua@0.1.0`). The Etherscan API key is kept outside the repository (`~/.etherscan-key`, chmod 600) and is never committed.
+
 | Contract | Address | Deployment tx |
 | --- | --- | --- |
 | AquaRegistry (`AquaRouter`, official aqua package 0.1.0) | `0xd2A8f6D7645F53aB23dC3EcB146a196026F964DA` | `0x38db6f7e025fbc1c9559e3560b0ac1c960564abd6a12687c145173d076b55d0f` |
