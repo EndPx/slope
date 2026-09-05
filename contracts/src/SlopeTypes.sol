@@ -90,7 +90,8 @@ interface ISlopeEvents {
         uint256 amountIn,
         uint256 amountOut,
         uint256 executionPrice,
-        uint256 timestamp
+        uint256 timestamp,
+        bool impactChecked
     );
     event PositionSkipped(uint256 indexed positionId, SkipReason reason);
     event PositionCompleted(uint256 indexed positionId);

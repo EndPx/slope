@@ -88,4 +88,57 @@ contract SlopeLifecycleTest is Test, ISlopeEvents {
         assertEq(tokenIn.balanceOf(address(slope)), 0);
         assertEq(tokenOut.balanceOf(address(slope)), 0);
     }
+
+    /// @dev REVISION 3 proof: the keeper abandons the position mid-window
+    /// (only fills at ticks 3, 6, 9 clear the 30e18 min fill, leaving a
+    /// 10e18 tail BELOW minFill), and only returns LONG after the window.
+    /// The terminal clamp must still authorize the sub-minFill tail, settle
+    /// it, and complete the position with the budget exact.
+    function test_Lifecycle_TailBelowMinFill_SettlesLongAfterTheWindow() external {
+        uint256 minFill = 30e18;
+        vm.startPrank(alice);
+        tokenIn.approve(address(slope), type(uint256).max);
+        uint256 id = slope.createPosition(
+            CreateParams({
+                tokenIn: address(tokenIn),
+                tokenOut: address(tokenOut),
+                totalBudget: BUDGET,
+                minFillAmount: minFill,
+                duration: DURATION,
+                curveShape: CurveShape.NEUTRAL,
+                minPrice: 0.5e18,
+                maxPrice: 2e18,
+                maxSlippageBps: 500
+            }),
+            AquaRoute({
+                router: router,
+                order: IAquaSwapVMRouter.Order({maker: makeAddr("maker"), traits: 1 << 254, data: hex"1100"}),
+                takerTraitsAndData: hex"000000000000000000000000000000000000000041"
+            })
+        );
+        vm.stopPrank();
+
+        uint256 executed;
+        for (uint256 tick = 1; tick <= 9; tick++) {
+            vm.warp(1 + tick * TICK);
+            uint256 authorizedNow =
+                CurveMath.progress(tick * TICK, DURATION, CurveShape.NEUTRAL) * BUDGET / 1e18 - executed;
+            slope.adaptiveExecute(id, authorizedNow); // fills only when >= minFill
+            executed += authorizedNow >= minFill ? authorizedNow : 0;
+        }
+        (Position memory pMid, ) = slope.getPosition(id);
+        assertEq(pMid.executedAmount, 90e18); // 10e18 tail is below minFill
+
+        // WELL past the window — not at its exact end — one call settles
+        // the sub-minFill tail and completes the position exactly.
+        vm.warp(1 + DURATION * 3 + 555);
+        vm.expectEmit(true, false, false, false, address(slope));
+        emit PositionCompleted(id);
+        assertTrue(slope.adaptiveExecute(id, BUDGET));
+        (Position memory p, ) = slope.getPosition(id);
+        assertEq(p.executedAmount, BUDGET);
+        assertFalse(p.isActive);
+        assertEq(tokenOut.balanceOf(alice), BUDGET);
+        assertEq(tokenOut.balanceOf(address(slope)), 0);
+    }
 }

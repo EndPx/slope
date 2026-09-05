@@ -169,15 +169,28 @@ contract SlopePosition is ISlopeEvents, ReentrancyGuard {
         // Dual quotes on the route's router: the probe approximates the spot
         // price, the execution quote is the real size. Both run the same
         // program, so their difference is the fill's own footprint.
-        // Probe floor (REVISION 3): 0.01 whole tokenIn units, derived from
-        // the cached decimals. Prevents floored division from collapsing the
-        // probe to a dust notional the router prices at zero on 6-decimal
-        // tokens. When the fill itself is smaller than the floor, the fill
-        // is its own probe and the impact check is vacuous — negligible by
-        // definition.
+        //
+        // Probe floor (REVISION 3): 1/10000 of a whole tokenIn unit
+        // (10^(decimalsIn - 4)), derived from the cached decimals. The floor
+        // keeps the probe a quotable notional on 6-decimal tokens (100 raw
+        // units of USDC) while staying far below ordinary fills (0.0001
+        // WETH on an 18-decimal token), so the impact check applies to
+        // essentially every fill. Validated against the test mock for both
+        // decimal shapes; re-validate against the real router at step 3.
+        //
+        // HONEST LIMIT: when fillAmount < probeFloor the fill becomes its
+        // own probe — referencePrice and executionPrice are the same quote,
+        // so the impact check cannot measure anything and is NOT applied.
+        // `impactChecked` is false on the FillExecuted event, the absolute
+        // [minPrice, maxPrice] bounds remain the only price protection for
+        // those fills, and no document may claim every fill is
+        // price-impact checked.
         uint256 probeAmount = fillAmount / PROBE_DENOMINATOR;
-        uint256 probeFloor = p.decimalsIn >= 2 ? 10 ** (p.decimalsIn - 2) : 1;
-        if (probeAmount < probeFloor) probeAmount = probeFloor < fillAmount ? probeFloor : fillAmount;
+        uint256 probeFloor = p.decimalsIn >= 4 ? 10 ** (p.decimalsIn - 4) : 1;
+        bool impactChecked = fillAmount >= probeFloor;
+        if (probeAmount < probeFloor) probeAmount = probeFloor;
+        if (probeAmount > fillAmount) probeAmount = fillAmount;
+        if (!impactChecked) probeAmount = fillAmount;
         (, uint256 probeOut,) = r.router.quote(r.order, p.tokenIn, p.tokenOut, probeAmount, r.takerTraitsAndData);
         (uint256 quotedIn, uint256 amountOut,) = r.router.quote(r.order, p.tokenIn, p.tokenOut, fillAmount, r.takerTraitsAndData);
 
@@ -211,6 +224,11 @@ contract SlopePosition is ISlopeEvents, ReentrancyGuard {
         }
 
         _ensureRouterAllowance(p.tokenIn, address(r.router), fillAmount);
+        // OPEN ITEM OI-2 (SPEC appendix, wire at step 3): the pre-swap dual
+        // quote is currently the only output protection. The hard
+        // minimum-output threshold must be embedded in `takerTraitsAndData`
+        // when the real route is wired up, so the swap itself enforces a
+        // floor independent of the quote.
         (, uint256 swappedOut,) = r.router.swap(r.order, p.tokenIn, p.tokenOut, fillAmount, r.takerTraitsAndData);
 
         // OPEN ITEM OI-1 (SPEC appendix, verify at step 3): the official
@@ -219,7 +237,7 @@ contract SlopePosition is ISlopeEvents, ReentrancyGuard {
         // increment by the swap-returned input instead of `fillAmount`.
         p.executedAmount += fillAmount;
         _sweep(p.tokenOut, p.owner);
-        emit FillExecuted(positionId, fillAmount, swappedOut, executionPrice, block.timestamp);
+        emit FillExecuted(positionId, fillAmount, swappedOut, executionPrice, block.timestamp, impactChecked);
 
         if (p.executedAmount >= p.totalBudget) {
             p.isActive = false;

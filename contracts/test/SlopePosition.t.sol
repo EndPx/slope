@@ -59,9 +59,15 @@ contract SlopePositionTest is Test, ISlopeEvents {
     }
 
     function _create() internal returns (uint256 positionId) {
+        return _createWithMinFill(MIN_FILL);
+    }
+
+    function _createWithMinFill(uint256 minFillAmount) internal returns (uint256 positionId) {
         vm.startPrank(alice);
         tokenIn.approve(address(slope), type(uint256).max);
-        positionId = slope.createPosition(_defaultParams(), _route());
+        CreateParams memory params = _defaultParams();
+        params.minFillAmount = minFillAmount;
+        positionId = slope.createPosition(params, _route());
         vm.stopPrank();
     }
 
@@ -429,6 +435,27 @@ contract SlopePositionTest is Test, ISlopeEvents {
         vm.expectEmit(false, false, false, true, address(slope));
         emit PositionSkipped(id, SkipReason.QUOTE_INVALID);
         assertFalse(slope.adaptiveExecute(id, 50e18));
+    }
+
+    function test_Execute_BelowProbeFloor_FillsWithImpactNotChecked() external {
+        uint256 id = _createWithMinFill(1000); // dust min-fill: the 5e13 fill passes it
+        // Floor is 1e14 raw (0.0001 WETH). A 5e13 fill is below it: the fill
+        // is its own probe, the impact measurement is not applied, and the
+        // event says so honestly — the absolute bounds still protect it.
+        vm.warp(T0 + 500);
+        vm.expectEmit(true, false, false, true, address(slope));
+        emit FillExecuted(id, 5e13, 5e13, 1e18, T0 + 500, false);
+        assertTrue(slope.adaptiveExecute(id, 5e13));
+        (Position memory p, ) = slope.getPosition(id);
+        assertEq(p.executedAmount, 5e13);
+    }
+
+    function test_Execute_AboveProbeFloor_FlagsImpactChecked() external {
+        uint256 id = _create();
+        vm.warp(T0 + 500);
+        vm.expectEmit(true, false, false, true, address(slope));
+        emit FillExecuted(id, 50e18, 50e18, 1e18, T0 + 500, true);
+        assertTrue(slope.adaptiveExecute(id, 50e18));
     }
 
     // ------------------------------------------------------------------
