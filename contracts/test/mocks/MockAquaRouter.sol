@@ -3,7 +3,7 @@ pragma solidity 0.8.30;
 
 import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import {IAquaSwapVMRouter} from "../../src/interfaces/IAquaSwapVMRouter.sol";
+import {IAquaSwapVMRouter} from "src/interfaces/IAquaSwapVMRouter.sol";
 
 /// @dev Deterministic AquaSwapVMRouter stand-in for the step-1 milestone.
 /// Pricing is a fixed WAD ratio (tokenOut raw per tokenIn raw, WAD-scaled).

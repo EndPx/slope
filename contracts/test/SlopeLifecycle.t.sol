@@ -2,12 +2,12 @@
 pragma solidity 0.8.30;
 
 import {Test} from "forge-std/Test.sol";
-import {SlopePosition} from "../src/SlopePosition.sol";
-import {CurveMath} from "../src/math/CurveMath.sol";
-import {AquaRoute, CreateParams, CurveShape, ISlopeEvents, Position, SlopeErrors} from "../src/SlopeTypes.sol";
-import {IAquaSwapVMRouter} from "../src/interfaces/IAquaSwapVMRouter.sol";
-import {MockERC20} from "./mocks/MockERC20.sol";
-import {MockAquaRouter} from "./mocks/MockAquaRouter.sol";
+import {SlopePosition} from "src/SlopePosition.sol";
+import {CurveMath} from "src/math/CurveMath.sol";
+import {AquaRoute, CreateParams, CurveShape, ISlopeEvents, Position, SlopeErrors} from "src/SlopeTypes.sol";
+import {IAquaSwapVMRouter} from "src/interfaces/IAquaSwapVMRouter.sol";
+import {MockERC20} from "test/mocks/MockERC20.sol";
+import {MockAquaRouter} from "test/mocks/MockAquaRouter.sol";
 
 /// @dev Full lifecycle integration: create, execute the exact schedule on
 /// every simulated tick, complete via the terminal clamp, and verify that

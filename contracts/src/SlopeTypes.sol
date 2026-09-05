@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.30;
 
-import {IAquaSwapVMRouter} from "./interfaces/IAquaSwapVMRouter.sol";
+import {IAquaSwapVMRouter} from "src/interfaces/IAquaSwapVMRouter.sol";
 
 /// @dev Execution schedule shapes. Only NEUTRAL is implemented in the step-1
 /// milestone; AGGRESSIVE and CONSERVATIVE land in the step-2 milestone.
