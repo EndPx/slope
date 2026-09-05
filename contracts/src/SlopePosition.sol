@@ -55,8 +55,6 @@ contract SlopePosition is ISlopeEvents, ReentrancyGuard {
             revert SlopeErrors.InvalidMinFill();
         }
         if (params.duration == 0) revert SlopeErrors.InvalidDuration();
-        // The step-2 milestone adds AGGRESSIVE and CONSERVATIVE.
-        if (params.curveShape != CurveShape.NEUTRAL) revert SlopeErrors.UnsupportedShape();
         if (params.minPrice == 0 || params.minPrice >= params.maxPrice) revert SlopeErrors.InvalidBounds();
         if (params.maxSlippageBps == 0) revert SlopeErrors.InvalidSlippage();
         if (route.router == IAquaSwapVMRouter(address(0)) || route.order.maker == address(0)) {

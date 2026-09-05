@@ -100,7 +100,6 @@ interface ISlopeEvents {
 library SlopeErrors {
     error PositionNotActive();
     error NotOwner();
-    error UnsupportedShape();
     error InvalidToken();
     error InvalidDecimals();
     error InvalidBudget();

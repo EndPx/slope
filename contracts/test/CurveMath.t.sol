@@ -2,6 +2,7 @@
 pragma solidity 0.8.30;
 
 import {Test} from "forge-std/Test.sol";
+import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
 import {CurveMath} from "@/math/CurveMath.sol";
 import {CurveShape} from "@/SlopeTypes.sol";
 
@@ -51,13 +52,6 @@ contract CurveMathTest is Test {
         caller.callProgress(1001, 1000, CurveShape.NEUTRAL);
     }
 
-    function test_UnsupportedShapeRevertsUntilStepTwo() external {
-        vm.expectRevert(CurveMath.UnsupportedShape.selector);
-        caller.callProgress(500, 1000, CurveShape.AGGRESSIVE);
-        vm.expectRevert(CurveMath.UnsupportedShape.selector);
-        caller.callProgress(500, 1000, CurveShape.CONSERVATIVE);
-    }
-
     function testFuzz_ProgressIsMonotonicAndBounded(uint128 e1Raw, uint128 e2Raw, uint128 durationRaw) external pure {
         uint256 duration = bound(uint256(durationRaw), 1, type(uint128).max);
         uint256 e1 = bound(uint256(e1Raw), 0, duration);
@@ -76,5 +70,75 @@ contract CurveMathTest is Test {
         // Floor semantics: progress * duration <= elapsed * 1e18 (bounded
         // here so the assertion's own multiplication cannot overflow).
         assertLe(p * duration, uint256(elapsed) * 1e18);
+    }
+
+    // ------------------------------------------------------------------
+    // AGGRESSIVE and CONSERVATIVE (step-2 milestone)
+    // ------------------------------------------------------------------
+
+    function test_Boundaries_Aggressive() external pure {
+        assertEq(CurveMath.progress(0, 1000, CurveShape.AGGRESSIVE), 0);
+        // Zero rounding error at the boundary is a hard MATH_SPEC obligation.
+        assertEq(CurveMath.progress(1000, 1000, CurveShape.AGGRESSIVE), 1e18);
+        assertEq(CurveMath.progress(86400, 86400, CurveShape.AGGRESSIVE), 1e18);
+    }
+
+    function test_Boundaries_Conservative() external pure {
+        assertEq(CurveMath.progress(0, 1000, CurveShape.CONSERVATIVE), 0);
+        assertEq(CurveMath.progress(1000, 1000, CurveShape.CONSERVATIVE), 1e18);
+        assertEq(CurveMath.progress(86400, 86400, CurveShape.CONSERVATIVE), 1e18);
+    }
+
+    function test_MidpointShapes_AggressiveAboveNeutralAboveConservative() external pure {
+        // The whole product claim rests on the curves being ordered the way
+        // their names say: front-loaded > linear > back-loaded.
+        uint256 neutral = CurveMath.progress(500, 1000, CurveShape.NEUTRAL);
+        uint256 aggressive = CurveMath.progress(500, 1000, CurveShape.AGGRESSIVE);
+        uint256 conservative = CurveMath.progress(500, 1000, CurveShape.CONSERVATIVE);
+        assertEq(neutral, 5e17);
+        assertEq(conservative, 25e16); // exact: (0.5e18)^2 / 1e18
+        assertGt(aggressive, 7e17); // sqrt(0.5)e18 ≈ 0.7071e18, floored
+        assertLt(aggressive, 71e16);
+        assertGt(aggressive, neutral);
+        assertGt(neutral, conservative);
+    }
+
+    function testFuzz_AggressiveIsMonotonicAndBounded(uint128 e1Raw, uint128 e2Raw, uint128 durationRaw) external pure {
+        uint256 duration = bound(uint256(durationRaw), 1, type(uint128).max);
+        uint256 e1 = bound(uint256(e1Raw), 0, duration);
+        uint256 e2 = bound(uint256(e2Raw), e1, duration);
+        uint256 p1 = CurveMath.progress(e1, duration, CurveShape.AGGRESSIVE);
+        uint256 p2 = CurveMath.progress(e2, duration, CurveShape.AGGRESSIVE);
+        assertLe(p1, p2);
+        assertLe(p2, WAD);
+    }
+
+    function testFuzz_ConservativeIsMonotonicAndBounded(uint128 e1Raw, uint128 e2Raw, uint128 durationRaw) external pure {
+        uint256 duration = bound(uint256(durationRaw), 1, type(uint128).max);
+        uint256 e1 = bound(uint256(e1Raw), 0, duration);
+        uint256 e2 = bound(uint256(e2Raw), e1, duration);
+        uint256 p1 = CurveMath.progress(e1, duration, CurveShape.CONSERVATIVE);
+        uint256 p2 = CurveMath.progress(e2, duration, CurveShape.CONSERVATIVE);
+        assertLe(p1, p2);
+        assertLe(p2, WAD);
+    }
+
+    function testFuzz_AggressiveSqrtFloorNeverOverAuthorizes(uint128 elapsedRaw, uint128 durationRaw) external pure {
+        uint256 duration = bound(uint256(durationRaw), 1, type(uint128).max);
+        uint256 elapsed = bound(uint256(elapsedRaw), 0, duration);
+        uint256 r = Math.mulDiv(elapsed, 1e18, duration);
+        uint256 p = CurveMath.progress(elapsed, duration, CurveShape.AGGRESSIVE);
+        // Floor sqrt: p^2 <= r * 1e18 (bounded: p, r <= 1e18 -> p^2 <= 1e36).
+        assertLe(p * p, r * 1e18);
+    }
+
+    function testFuzz_ConservativeNeverExceedsLinearFraction(uint128 elapsedRaw, uint128 durationRaw) external pure {
+        uint256 duration = bound(uint256(durationRaw), 1, type(uint128).max);
+        uint256 elapsed = bound(uint256(elapsedRaw), 0, duration);
+        uint256 r = Math.mulDiv(elapsed, 1e18, duration);
+        uint256 p = CurveMath.progress(elapsed, duration, CurveShape.CONSERVATIVE);
+        // r <= 1e18 implies r^2/1e18 <= r: the back-loaded curve never
+        // runs ahead of the linear schedule.
+        assertLe(p, r);
     }
 }

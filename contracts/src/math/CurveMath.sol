@@ -7,29 +7,39 @@ import {CurveShape} from "@/SlopeTypes.sol";
 /// @title CurveMath
 /// @notice The execution schedule kernel (docs/MATH_SPEC.md section 3).
 /// Pure, storage-free, and rounding-exact at both window boundaries.
-/// @dev Step-1 milestone implements NEUTRAL only; AGGRESSIVE (floor sqrt)
-/// and CONSERVATIVE (floor square) land in the step-2 milestone.
+/// @dev Shapes (SPEC section 4): NEUTRAL = exact linear TWAP; AGGRESSIVE =
+/// (t/d)^(1/2) via the pinned, battle-tested OpenZeppelin floor sqrt —
+/// never a hand-rolled power; CONSERVATIVE = (t/d)^2 via plain
+/// multiplication.
 library CurveMath {
     error ElapsedExceedsDuration();
-    error UnsupportedShape();
 
     uint256 internal constant WAD = 1e18;
 
     /// @notice Fraction of the budget authorized at `elapsed`, in WAD
-    /// (1e18 = 100%). NEUTRAL is the exact linear TWAP:
-    /// `elapsed * 1e18 / duration`, floored.
+    /// (1e18 = 100%). Boundary conditions are exact for every shape:
+    /// `progress(0) = 0` and `progress(duration) = 1e18` with zero rounding
+    /// error (MATH_SPEC section 3, hard test obligation).
     /// @dev Preconditions: `duration > 0` (enforced at creation) and
-    /// `elapsed <= duration` (enforced by the caller: calls past the window
-    /// are refused as expired; at `elapsed == duration` the terminal clamp
-    /// in SlopePosition authorizes the exact remainder directly).
+    /// `elapsed <= duration` (enforced by the caller, which clamps the
+    /// schedule input at the window edge).
     function progress(uint256 elapsed, uint256 duration, CurveShape shape) internal pure returns (uint256) {
         if (elapsed > duration) revert ElapsedExceedsDuration();
         if (elapsed == 0) return 0;
         if (elapsed == duration) return WAD;
+        // r is the WAD window fraction; floored, hence never over-authorizes.
+        uint256 r = Math.mulDiv(elapsed, WAD, duration);
         if (shape == CurveShape.NEUTRAL) {
-            // Full-precision product: never overflows, never over-authorizes.
-            return Math.mulDiv(elapsed, WAD, duration);
+            return r;
         }
-        revert UnsupportedShape();
+        if (shape == CurveShape.AGGRESSIVE) {
+            // WAD square root of the WAD fraction: floor(sqrt(r * 1e18)).
+            // r <= 1e18 by construction, so r * WAD <= 1e36 cannot overflow.
+            return Math.sqrt(r * WAD);
+        }
+        if (shape == CurveShape.CONSERVATIVE) {
+            return Math.mulDiv(r, r, WAD);
+        }
+        revert ElapsedExceedsDuration(); // unreachable: CurveShape has three members
     }
 }

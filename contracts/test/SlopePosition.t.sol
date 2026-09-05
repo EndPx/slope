@@ -163,18 +163,6 @@ contract SlopePositionTest is Test, ISlopeEvents {
         vm.stopPrank();
     }
 
-    function test_Create_RejectsShapesNotYetImplemented() external {
-        vm.startPrank(alice);
-        tokenIn.approve(address(slope), type(uint256).max);
-        CreateParams memory p = _defaultParams();
-        p.curveShape = CurveShape.AGGRESSIVE;
-        vm.expectRevert(SlopeErrors.UnsupportedShape.selector);
-        slope.createPosition(p, _route());
-        p.curveShape = CurveShape.CONSERVATIVE;
-        vm.expectRevert(SlopeErrors.UnsupportedShape.selector);
-        slope.createPosition(p, _route());
-        vm.stopPrank();
-    }
 
     function test_Create_RejectsInvalidRoute() external {
         vm.startPrank(alice);
@@ -456,6 +444,46 @@ contract SlopePositionTest is Test, ISlopeEvents {
         vm.expectEmit(true, false, false, true, address(slope));
         emit FillExecuted(id, 50e18, 50e18, 1e18, T0 + 500, true);
         assertTrue(slope.adaptiveExecute(id, 50e18));
+    }
+
+    // ------------------------------------------------------------------
+    // shapes end-to-end (step-2 milestone)
+    // ------------------------------------------------------------------
+
+    function test_Execute_ShapeOrderingAtMidpoint_AggressiveAboveNeutralAboveConservative() external {
+        // Three positions, same pair and route price; only the schedule
+        // differs. At the window midpoint the executed amounts must be
+        // ordered front-loaded > linear > back-loaded.
+        vm.startPrank(alice);
+        tokenIn.approve(address(slope), type(uint256).max);
+        uint256 aggressiveId = slope.createPosition(_shapeParams(CurveShape.AGGRESSIVE), _route());
+        uint256 neutralId = slope.createPosition(_shapeParams(CurveShape.NEUTRAL), _route());
+        uint256 conservativeId = slope.createPosition(_shapeParams(CurveShape.CONSERVATIVE), _route());
+        vm.stopPrank();
+        // Full fills at midpoint need sqrt(0.5)e18*100 + 50e18 + 25e18
+        // ≈ 145.72e18 tokenIn; mint well above that.
+        tokenIn.mint(alice, 50e18);
+
+        vm.warp(T0 + 500);
+        assertTrue(slope.adaptiveExecute(aggressiveId, BUDGET));
+        assertTrue(slope.adaptiveExecute(neutralId, BUDGET));
+        assertTrue(slope.adaptiveExecute(conservativeId, BUDGET));
+
+        (Position memory agg, ) = slope.getPosition(aggressiveId);
+        (Position memory neu, ) = slope.getPosition(neutralId);
+        (Position memory con, ) = slope.getPosition(conservativeId);
+        assertEq(neu.executedAmount, 50e18);
+        assertEq(con.executedAmount, 25e18);
+        assertGt(agg.executedAmount, 70e18); // sqrt(0.5)e18 * 100e18 ≈ 70.71e18
+        assertLt(agg.executedAmount, 71e18);
+        assertGt(agg.executedAmount, neu.executedAmount);
+        assertGt(neu.executedAmount, con.executedAmount);
+    }
+
+    function _shapeParams(CurveShape shape) internal view returns (CreateParams memory) {
+        CreateParams memory params = _defaultParams();
+        params.curveShape = shape;
+        return params;
     }
 
     // ------------------------------------------------------------------
