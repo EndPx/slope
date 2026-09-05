@@ -1,5 +1,8 @@
 @/=src/
 @test/=test/
+aqua-0.1.0/=lib/swap-vm/node_modules/@1inch/aqua/
+@1inch/aqua/=lib/swap-vm/node_modules/@1inch/aqua/
+swap-vm/=lib/swap-vm/src/
 swap-vm-libs/=lib/swap-vm/src/libs/
 @1inch/solidity-utils/=lib/swap-vm/node_modules/@1inch/solidity-utils/
 @openzeppelin/contracts/=lib/openzeppelin-contracts/contracts/
