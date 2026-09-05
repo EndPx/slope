@@ -20,6 +20,9 @@ import {IAquaSwapVMRouter} from "@/interfaces/IAquaSwapVMRouter.sol";
 ///      UNGATED xycSwapXD strategy (program 0x1100, no KYC-gate opcode),
 ///      commitment strictly below the maker wallet balance.
 /// Writes deployments/<chainId>.json for frontend, keeper, and subgraph.
+///
+/// Signer: resolved by forge — pass `--keystore ~/.foundry/keystores/deployer`
+/// (password prompted once) or `--private-key $PRIVATE_KEY`.
 contract DeployAll is Script {
     struct Deployment {
         address deployer;
@@ -33,15 +36,20 @@ contract DeployAll is Script {
         uint256 blockNumber;
     }
 
-    /// @param deployerKey funded EOA key (broadcast signer, registry owner,
-    ///        strategy maker). `weth` is only stored by the router (unwrap
-    ///        target; unused because taker blobs never request unwrapping).
-    function deploy(uint256 deployerKey, address weth, bool writeManifest, string memory manifestDir)
+    function run() external returns (Deployment memory d) {
+        // msg.sender is the broadcaster forge resolved (--keystore or
+        // --private-key). No secret ever touches this script.
+        d = deploy(msg.sender, WETH_BASE_SEPOLIA, true, "deployments/");
+    }
+
+    /// @param weth is only stored by the router (unwrap target; unused
+    /// because taker blobs never request unwrapping). Test-only entry point
+    /// uses the same code path with an in-memory signer.
+    function deploy(address deployer, address weth, bool writeManifest, string memory manifestDir)
         public
         returns (Deployment memory d)
     {
-        address deployer = vm.addr(deployerKey);
-        vm.startBroadcast(deployerKey);
+        vm.startBroadcast();
 
         d.deployer = deployer;
         d.weth = weth;
@@ -52,14 +60,15 @@ contract DeployAll is Script {
         d.slopePosition = address(new SlopePosition());
 
         // Seed: 1000 dETH against 3,000,000 dUSD (~3000 per dETH).
-        // Wallet balances exceed the shipped commitments (commitments are
-        // not escrow; fills pull real tokens from the maker wallet).
-        MockERC20(d.dETH).mint(deployer, 3000e18);
-        MockERC20(d.dUSD).mint(deployer, 9_000_000e6);
+        // Inventory is minted to the SHIPPER (msg.sender) — the maker whose
+        // wallet fills will pull from — and the commitment stays strictly
+        // below that wallet balance (commitments are not escrow).
+        MockERC20(d.dETH).mint(msg.sender, 3000e18);
+        MockERC20(d.dUSD).mint(msg.sender, 9_000_000e6);
         MockERC20(d.dETH).approve(d.aquaRegistry, type(uint256).max);
         MockERC20(d.dUSD).approve(d.aquaRegistry, type(uint256).max);
         bytes memory strategy =
-            abi.encode(IAquaSwapVMRouter.Order({maker: deployer, traits: 1 << 254, data: hex"1100"}));
+            abi.encode(IAquaSwapVMRouter.Order({maker: msg.sender, traits: 1 << 254, data: hex"1100"}));
         address[] memory tokens = _addresses(d.dETH, d.dUSD);
         uint256[] memory amounts = _amounts(1000e18, 3_000_000e6);
         d.strategyHash = IAquaRegistry(d.aquaRegistry).ship(d.aquaRouter, strategy, tokens, amounts);
@@ -93,6 +102,9 @@ contract DeployAll is Script {
         console2.log("SlopePosition:", d.slopePosition);
         console2.log("strategyHash:", vm.toString(d.strategyHash));
     }
+
+    /// @dev Base Sepolia canonical WETH predeploy (same address as mainnet).
+    address internal constant WETH_BASE_SEPOLIA = 0x4200000000000000000000000000000000000006;
 
     function _addresses(address a, address b) private pure returns (address[] memory v) {
         v = new address[](2);
