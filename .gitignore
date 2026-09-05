@@ -26,6 +26,7 @@ cache/
 out/
 coverage/
 coverage.json
+broadcast/
 
 # ---------------------------------------------------------------------------
 # Vite / frontend build output
