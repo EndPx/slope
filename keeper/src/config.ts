@@ -16,6 +16,10 @@ export interface KeeperConfig {
   keystorePath: string;
   /** Extra seconds past the position window before the policy expires. */
   settlementBufferSeconds: bigint;
+  /** Live subgraph consumption (track requirement): the VERSIONED Studio
+   *  query endpoint, pinned at v0.0.1 — not a generic URL. */
+  graphApiKey: string;
+  graphQueryUrl: string;
 }
 
 function manifest(): {
@@ -40,6 +44,12 @@ export function loadConfig(): KeeperConfig {
     manifestPath: "deployments/base-sepolia.json",
     keystorePath: ".keystore.json",
     settlementBufferSeconds: 86_400n, // one day past the window for terminal settles
+    graphApiKey: process.env.GRAPH_API_KEY ?? "",
+    // Pinned versioned deployment (docs/SUBGRAPH.md); GRAPH_QUERY_URL can
+    // point at a newer version after a redeploy — never a generic URL.
+    graphQueryUrl:
+      process.env.GRAPH_QUERY_URL ??
+      "https://api.studio.thegraph.com/query/1758808/slope-base-sepolia/v0.0.1",
   };
 }
 
