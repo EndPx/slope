@@ -21,8 +21,9 @@ Slope is built with a **spec-driven, AI-assisted workflow**. This folder contain
 | [`05-review-curve.md`](05-review-curve.md) | Curve review + non-NEUTRAL lifecycle coverage question | Distinct `UnsupportedShape` error, exact midpoint assertions, terminal lifecycle tests for all three shapes |
 | [`06-step3-aqua.md`](06-step3-aqua.md) | Step 3: real Aqua deployment, seeding, OI closure, fork tests | Live deployment on Base Sepolia, real fills on-chain, OI-1/OI-2 verified and closed |
 | [`07-review-deployment-forensics.md`](07-review-deployment-forensics.md) | Deployment forensics + manifest review | State cleanliness proven, natural mid-window fill executed on-chain, bytecode provenance documented, manifest symmetry/provenance fields |
+| [`08-step4-privy.md`](08-step4-privy.md) | Step 4: Privy delegation end-to-end, plus the human-steered `policy_violation` diagnosis | Delegated fills live on-chain (positions #8/#10); root cause isolated to aggregation-reference conditions; scope-first policies, deterministic parking, skip detection, per-wallet serialization |
 
-Later steps (Privy, keeper, subgraph, frontend) append their prompts here as they happen — collected at the milestone, not reconstructed at submission time.
+Later steps (subgraph, frontend, final docs) append their prompts here as they happen — collected at the milestone, not reconstructed at submission time.
 
 ## Integrity note
 
