@@ -1,24 +1,24 @@
 /**
- * One-off migration (run: pnpm --filter @slope/keeper patch-aggregations).
+ * One-off live-policy rebuild (run: pnpm --filter @slope/keeper patch-aggregations).
  *
- * Context: the original app-wide aggregation accumulated sign-time records
- * from broken positions — denied attempts consume the rolling sum — until
- * the 100 dETH cap denied EVERY new sign with policy_violation, including
- * healthy delegations. Aggregations are now created per position at
- * delegation time; this script migrates positions delegated before that
- * change WITHOUT re-delegation (quorum and wallet consent stay valid):
- *
- *   1. mark permanently-broken positions disabled (keeper skips them);
- *   2. for every other entry: create a FRESH per-position aggregation
- *      (empty 72h window), point the policy's aggregation reference at it
- *      with a 2x-budget cap, record the id in the keystore.
- *
- * The old app-wide aggregation stays behind in the Privy dashboard,
- * unreferenced by any active policy.
+ * Two generations of live policies predate the final template:
+ *  - gen 1 (positions 5/6): hex per-tx cap + aggregation reference;
+ *  - gen 2 (positions 8/9): decimal per-tx cap + aggregation reference.
+ * Live testing proved that aggregation-reference conditions deny EVERY
+ * eth_signTransaction (see policy-template.ts VERIFIED NOTE), so this
+ * rebuilds every active entry's policy to the final shape — allowlist +
+ * selector + positionId binding + per-tx cap (the ON-CHAIN totalBudget) +
+ * expiry — WITHOUT re-delegation (quorum and wallet consent stay valid),
+ * and deletes the stale per-position aggregation windows (the app owns at
+ * most 10).
  */
+import {readFileSync} from "node:fs";
+import {resolve} from "node:path";
+import {createPublicClient, http} from "viem";
+import {baseSepolia} from "viem/chains";
 import {loadConfig, requireCredentials} from "./config.ts";
-import {createAggregation, getPolicy, updatePolicy} from "./privy-rest.ts";
-import {buildAggregationBody} from "./policy-template.ts";
+import {getPolicy, updatePolicy, deleteAggregation} from "./privy-rest.ts";
+import {buildPositionPolicy} from "./policy-template.ts";
 import {loadKeystore, saveKeystore} from "./keystore.ts";
 
 /** Positions whose quorum/route can never produce a successful fill. */
@@ -29,50 +29,100 @@ const DISABLED: Record<string, string> = {
     "route predates the 22-byte taker blob fix — every fill would revert on-chain (TakerTraitsMissingTraits); recover funds via cancelPosition by the owner",
 };
 
+/** Window created by the first migration attempt; never referenced by a policy. */
+const ORPHANED_AGGREGATIONS = ["ofyemc1jg8uvq3fpe2nean1o"];
+
 const cfg = loadConfig();
 requireCredentials(cfg);
+const manifest = JSON.parse(
+  readFileSync(resolve(process.cwd(), "../contracts/deployments/base-sepolia.json"), "utf8"),
+);
+const client = createPublicClient({chain: baseSepolia, transport: http(cfg.rpcUrl)});
+const POSITION_ABI = [
+  {
+    type: "function",
+    name: "getPosition",
+    stateMutability: "view",
+    inputs: [{type: "uint256", name: "positionId"}],
+    outputs: [
+      {
+        type: "tuple",
+        components: [
+          {type: "address", name: "owner"},
+          {type: "address", name: "tokenIn"},
+          {type: "address", name: "tokenOut"},
+          {type: "uint8", name: "decimalsIn"},
+          {type: "uint8", name: "decimalsOut"},
+          {type: "uint256", name: "totalBudget"},
+          {type: "uint256", name: "executedAmount"},
+          {type: "uint256", name: "minFillAmount"},
+          {type: "uint256", name: "startTimestamp"},
+          {type: "uint256", name: "duration"},
+          {type: "uint8", name: "curveShape"},
+          {type: "uint256", name: "minPrice"},
+          {type: "uint256", name: "maxPrice"},
+          {type: "uint16", name: "maxSlippageBps"},
+          {type: "bool", name: "isActive"},
+        ],
+        internalType: "struct Position",
+      },
+    ],
+  },
+] as const;
+
 const store = loadKeystore();
-const hex = (n: bigint) => `0x${n.toString(16)}`;
 
 for (const [positionId, entry] of Object.entries(store)) {
   if (DISABLED[positionId] !== undefined) {
-    entry.disabled = DISABLED[positionId];
-    console.log(`[${positionId}] disabled — ${DISABLED[positionId]}`);
+    entry.disabled ??= DISABLED[positionId];
+    console.log(`[${positionId}] disabled — ${entry.disabled}`);
     continue;
   }
 
-  const policy = await getPolicy(cfg, entry.policyId);
-  const conditions = policy.rules?.[0]?.conditions ?? [];
-  const capCondition = conditions.find((c) => c["field"] === "adaptiveExecute.maxAmountIn");
-  if (!capCondition) throw new Error(`[${positionId}] per-tx cap condition not found in policy ${entry.policyId}`);
-  const budgetRaw = BigInt(String(capCondition["value"]));
-
-  const aggregation = await createAggregation(
-    cfg,
-    buildAggregationBody(cfg.slopePosition, BigInt(positionId)),
-  );
-  const rules = structuredClone(policy.rules!);
-  rules[0].conditions = rules[0].conditions!.map((c) =>
-    String(c["field"] ?? "").startsWith("aggregation.")
-      ? {
-          field_source: "reference",
-          field: `aggregation.${aggregation.id}`,
-          operator: "lte",
-          value: hex(budgetRaw * 2n),
-        }
-      : c,
-  );
-  // PATCH takes {name, rules} only: rule ids are server-assigned and
-  // version/chain_type are not patchable (live-tested).
-  await updatePolicy(cfg, entry.policyId, {
-    name: policy.name,
-    rules: rules.map(({id: _ruleId, ...rule}) => rule),
+  const res: unknown = await client.readContract({
+    address: manifest.slopePosition,
+    abi: POSITION_ABI,
+    functionName: "getPosition",
+    args: [BigInt(positionId)],
   });
-  entry.aggregationId = aggregation.id;
+  const position = (Array.isArray(res) ? res[0] : res) as {totalBudget: bigint};
+  const budgetRaw = position.totalBudget;
+
+  const policy = await getPolicy(cfg, entry.policyId);
+  const oldExpiry = policy.rules?.[0]?.conditions?.find(
+    (c) => c["field"] === "current_unix_timestamp",
+  )?.["value"];
+  const expirySeconds = BigInt(String(oldExpiry));
+
+  const rebuilt = buildPositionPolicy({
+    positionId: BigInt(positionId),
+    slopePosition: cfg.slopePosition,
+    budgetRaw,
+    expirySeconds,
+    policyName: policy.name ?? `Slope pos ${positionId}`,
+  });
+  await updatePolicy(cfg, entry.policyId, {name: rebuilt.name, rules: rebuilt.rules});
   console.log(
-    `[${positionId}] policy ${entry.policyId} -> fresh aggregation ${aggregation.id} (cap ${budgetRaw * 2n})`,
+    `[${positionId}] policy ${entry.policyId} rebuilt: allowlist + selector + positionId ${positionId} + per-tx cap ${budgetRaw} + expiry ${expirySeconds}`,
   );
 }
 
+// Recycle stale aggregation windows.
+const stale = [...ORPHANED_AGGREGATIONS];
+for (const entry of Object.values(store)) {
+  if (entry.aggregationId) stale.push(entry.aggregationId);
+}
+for (const id of [...new Set(stale)]) {
+  try {
+    await deleteAggregation(cfg, id);
+    console.log(`deleted stale aggregation ${id}`);
+  } catch (e) {
+    console.error(`deleting stale aggregation ${id} failed:`, (e as Error).message);
+  }
+}
+for (const entry of Object.values(store)) {
+  delete entry.aggregationId;
+}
+
 saveKeystore(store);
-console.log("migration done");
+console.log("rebuild done");

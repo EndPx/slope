@@ -1,18 +1,24 @@
 /**
- * Privy policy + aggregation template builders (pure, unit-testable).
+ * Privy policy template builder (pure, unit-testable).
  *
  * Design rules (SPEC.md section 2 + Decision 3 + REVISION 1/2):
  *  - DENY-by-default: the policy allows ONLY eth_signTransaction; every other
  *    method (including exportPrivateKey) is implicitly denied by Privy.
  *  - Scope: target allowlist (SlopePosition only) + function selector
- *    (adaptiveExecute only) + per-transaction cap on the maxAmountIn calldata
- *    param + a rolling aggregation cap (blast-radius limit) + expiry.
- *  - The aggregation is REST-only (Node SDK has no `create`); it sums the
- *    decoded `maxAmountIn` calldata param over a rolling window. One
- *    aggregation PER POSITION, created fresh at delegation time.
- *  - Framing rule: the aggregation is a RATE LIMIT / blast-radius control,
- *    NOT budget enforcement — budget enforcement is the on-chain invariant
- *    `executedAmount <= totalBudget`.
+ *    (adaptiveExecute only) + binding to the signer's OWN positionId +
+ *    per-transaction cap on the maxAmountIn calldata param + expiry.
+ *
+ * VERIFIED NOTE (2026-09-06, live Base Sepolia): Privy stateful conditions
+ * (field_source "reference" to an aggregation) DENY every eth_signTransaction
+ * request they appear in — tested with lte/lt, hex/decimal values, fresh and
+ * reused windows; the identical policy without the reference passes. The
+ * rolling-sum rate limit therefore cannot live in the policy today. It is
+ * enforced in depth elsewhere instead: the per-transaction cap + expiry +
+ * positionId binding here, the keeper's schedule bound (it only ever signs
+ * the curve-authorized increment), and the on-chain invariant
+ * `executedAmount <= totalBudget` — which is the real budget enforcement
+ * (SPEC Decision 3 framing: the aggregation was always a rate limit, never
+ * the budget).
  */
 
 export interface PrivyCondition {
@@ -50,56 +56,6 @@ export const ADAPTIVE_EXECUTE_ABI = [
   },
 ];
 
-/** Max aggregation window Privy supports (docs): 72 hours. */
-export const MAX_AGGREGATION_WINDOW_SECONDS = 259_200;
-
-/**
- * Builds the aggregation body: sums the decoded `maxAmountIn` calldata param
- * of every adaptiveExecute call to SlopePosition over a rolling 72h window.
- *
- * One aggregation PER POSITION, created fresh at delegation: Privy records
- * the metric at SIGN time, so denied attempts still consume the rolling sum.
- * An app-wide window let a broken position's retries starve every other
- * delegation (live incident 2026-09-06: 12 failed signs x 10 dETH exceeded
- * the 100 dETH cap and denied all new signs with policy_violation). A fresh
- * per-position window bounds that blast radius to the position's own
- * headroom.
- *
- * The tracking conditions must stay in sync with the policy's allow
- * conditions (docs: divergence silently resets the cap).
- */
-export function buildAggregationBody(slopePosition: string, positionId?: bigint): object {
-  return {
-    name:
-      positionId === undefined
-        ? "Slope adaptiveExecute maxAmountIn rolling sum (72h)"
-        : `Slope pos ${positionId} maxAmountIn rolling sum (72h)`,
-    method: "eth_signTransaction",
-    metric: {
-      field: "adaptiveExecute.maxAmountIn",
-      field_source: "ethereum_calldata",
-      function: "sum",
-      abi: ADAPTIVE_EXECUTE_ABI,
-    },
-    window: {type: "rolling", seconds: MAX_AGGREGATION_WINDOW_SECONDS},
-    conditions: [
-      {
-        field_source: "ethereum_transaction",
-        field: "to",
-        operator: "eq",
-        value: slopePosition,
-      },
-      {
-        field_source: "ethereum_calldata",
-        field: "function_name",
-        operator: "eq",
-        value: "adaptiveExecute",
-        abi: ADAPTIVE_EXECUTE_ABI,
-      },
-    ],
-  };
-}
-
 /**
  * Builds the per-position signer override policy. One key quorum + one
  * policy PER POSITION: Privy allows a single override policy per signer
@@ -108,16 +64,10 @@ export function buildAggregationBody(slopePosition: string, positionId?: bigint)
  *
  * @param params.slopePosition   SlopePosition contract address (allowlist)
  * @param params.budgetRaw       the position's totalBudget in raw units —
- *                               per-transaction cap on maxAmountIn
- * @param params.aggregationId   Privy aggregation id (rate limit reference)
- * @param params.aggregationCapRaw  rolling-sum cap in raw units: 2x the
- *                               position budget. Legitimate fills sum to
- *                               exactly budgetRaw over the position's life
- *                               (the keeper signs the due increment); the
- *                               2x headroom absorbs signs that consumed
- *                               aggregation but failed to broadcast — skipped
- *                               fills consume too, because Privy records at
- *                               sign time, not at execution success
+ *                               per-transaction cap on maxAmountIn (lte is
+ *                               INCLUSIVE at the boundary: a terminal
+ *                               settlement of exactly totalBudget passes a
+ *                               cap of totalBudget — live-verified)
  * @param params.expirySeconds   unix timestamp after which Privy stops
  *                               signing: position start + duration + a
  *                               settlement buffer (the terminal clamp may
@@ -127,12 +77,9 @@ export function buildPositionPolicy(params: {
   positionId: bigint;
   slopePosition: string;
   budgetRaw: bigint;
-  aggregationId: string;
-  aggregationCapRaw: bigint;
   expirySeconds: bigint;
   policyName: string;
 }): PrivyPolicy {
-  const hex = (n: bigint) => `0x${n.toString(16)}`;
   return {
     version: "1.0",
     name: params.policyName,
@@ -176,13 +123,6 @@ export function buildPositionPolicy(params: {
             // a hex string here denied every request in live testing.
             value: params.budgetRaw.toString(),
             abi: ADAPTIVE_EXECUTE_ABI,
-          },
-          {
-            field_source: "reference",
-            field: `aggregation.${params.aggregationId}`,
-            operator: "lte",
-            // Aggregation reference caps use hex per the docs recipe.
-            value: hex(params.aggregationCapRaw),
           },
           {
             field_source: "system",

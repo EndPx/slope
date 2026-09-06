@@ -4,11 +4,15 @@
  * POST /delegate {positionId, owner, budgetRaw, expirySeconds}
  *   -> generates a per-position P-256 authorization key,
  *      registers it as a 1-of-1 key quorum (REST),
- *      creates a FRESH per-position aggregation (empty 72h rolling window)
- *      and the per-position policy via REST (scope + per-tx cap +
- *      aggregation reference + per-order expiry),
+ *      creates the per-position policy via REST (allowlist + selector +
+ *      positionId binding + per-tx cap + per-order expiry),
  *      stores the private key in the gitignored keystore,
  *      returns {signerId, policyId} for the frontend `addSigners` consent.
+ *
+ * No aggregation is created: Privy reference conditions deny every
+ * eth_signTransaction (see policy-template.ts VERIFIED NOTE), so there is
+ * nothing to attach to a policy. Stale aggregation slots from earlier
+ * delegations are reclaimed below before a new one is served.
  *
  * GET /delegations -> current keystore entries (for the keeper loop and UI).
  */
@@ -17,8 +21,8 @@ import {Hono} from "hono";
 import {cors} from "hono/cors";
 import {generateP256KeyPair} from "@privy-io/node";
 import {loadConfig, requireCredentials} from "./config.ts";
-import {createAggregation, createKeyQuorum, createPolicy, deleteAggregation, listDelegatedWallets} from "./privy-rest.ts";
-import {buildAggregationBody, buildPositionPolicy} from "./policy-template.ts";
+import {createKeyQuorum, createPolicy, deleteAggregation, listDelegatedWallets} from "./privy-rest.ts";
+import {buildPositionPolicy} from "./policy-template.ts";
 import {putEntry, loadKeystore, saveKeystore} from "./keystore.ts";
 
 const cfg = loadConfig();
@@ -42,9 +46,8 @@ app.get("/delegations", (c) =>
   ),
 );
 
-/** The app owns at most 10 aggregations. Terminal positions are disabled by
- *  the keeper after deleting theirs; any deletion that failed is retried
- *  here so a new delegation never silently starves on the slot limit. */
+/** Reclaims stale aggregation slots (max 10 per app) left over from
+ *  delegations made before reference conditions were dropped. */
 function reclaimAggregationSlots(): void {
   const store = loadKeystore();
   for (const [positionId, entry] of Object.entries(store)) {
@@ -89,21 +92,10 @@ app.post("/delegate", async (c) => {
 
     const quorum = await createKeyQuorum(cfg, keypair.publicKey);
 
-    // Fresh aggregation per delegation: the 72h rolling window starts empty
-    // for THIS position. Denied attempts still record into the sum at sign
-    // time, so a shared window lets one broken position's retries starve
-    // every other delegation — per-position windows bound that blast radius.
-    const aggregation = await createAggregation(cfg, buildAggregationBody(cfg.slopePosition, positionId));
-
     const policy = buildPositionPolicy({
       positionId,
       slopePosition: cfg.slopePosition,
       budgetRaw,
-      aggregationId: aggregation.id,
-      // Rate limit, not budget: legitimate fills sum to exactly budgetRaw
-      // over the position's life (the keeper signs the due increment); 2x
-      // covers signs that consumed the window but failed to broadcast.
-      aggregationCapRaw: budgetRaw * 2n,
       expirySeconds,
       policyName: `Slope pos ${positionId}`,
     });
@@ -116,11 +108,10 @@ app.post("/delegate", async (c) => {
       publicKeyB64: keypair.publicKey,
       keyQuorumId: quorum.id,
       policyId: created.id,
-      aggregationId: aggregation.id,
       createdAt: new Date().toISOString(),
     });
 
-    console.log(`delegated position ${positionId}: quorum ${quorum.id} policy ${created.id} aggregation ${aggregation.id}`);
+    console.log(`delegated position ${positionId}: quorum ${quorum.id} policy ${created.id}`);
     return c.json({signerId: quorum.id, policyId: created.id});
   } catch (e) {
     // Delegation must fail LOUDLY (returned to the frontend + logged), never
