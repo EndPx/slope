@@ -13,11 +13,11 @@
  *   5. log executed/skipped with the on-chain skip reason; park positions
  *      with persistent failures.
  *
- * Serialization: one in-flight promise per positionId — never two parallel
- * transactions for the same position (Privy aggregations update after
- * signing, so concurrent requests can both pass evaluation).
+ * Serialization: one in-flight promise per OWNER WALLET — never two parallel
+ * transactions from the same wallet (shared nonce sequence), and never two
+ * parallel transactions for the same position.
  */
-import {createPublicClient, encodeFunctionData, http} from "viem";
+import {createPublicClient, decodeEventLog, encodeFunctionData, http, toHex} from "viem";
 import {baseSepolia} from "viem/chains";
 import {PrivyClient} from "@privy-io/node";
 import {readFileSync} from "node:fs";
@@ -82,6 +82,46 @@ const inFlight = new Map<string, Promise<void>>();
 const failures = new Map<string, number>();
 const PARK_AFTER = 3;
 
+const SKIP_ABI = [
+  {
+    type: "event",
+    name: "PositionSkipped",
+    inputs: [
+      {type: "uint256", indexed: true, name: "positionId"},
+      {type: "uint8", name: "reason"},
+    ],
+  },
+] as const;
+const SKIP_REASONS = ["NOT_DUE", "MIN_FILL", "BOUNDS", "IMPACT", "QUOTE_INVALID", "TRANSFER_FAILED"];
+
+/** A tx can succeed while the FILL is skipped (skip-not-revert design) —
+ *  that is no progress, not success (live: a TRANSFER_FAILED skip loop
+ *  burned 15 signs before this check existed). */
+class FillSkippedError extends Error {
+  constructor(readonly reason: string) {
+    super(`fill skipped on-chain: ${reason}`);
+  }
+}
+
+function decodeSkipReason(receipt: {logs: Array<{data: `0x${string}`; topics: string[]}>}): string | null {
+  for (const log of receipt.logs) {
+    try {
+      const decoded = decodeEventLog({
+        abi: SKIP_ABI,
+        data: log.data,
+        topics: log.topics as [`0x${string}`, ...`0x${string}`[]],
+      });
+      if (decoded.eventName === "PositionSkipped") {
+        const index = Number((decoded.args as unknown as {reason: bigint}).reason);
+        return SKIP_REASONS[index] ?? `UNKNOWN(${index})`;
+      }
+    } catch {
+      // log from another contract (router/tokens) — not ours
+    }
+  }
+  return null;
+}
+
 function adaptiveExecuteCalldata(positionId: bigint, maxAmountIn: bigint): `0x${string}` {
   return encodeFunctionData({abi: ABI, functionName: "adaptiveExecute", args: [positionId, maxAmountIn]});
 }
@@ -99,6 +139,19 @@ async function signAndBroadcast(
   );
   if (!delegated) throw new Error(`no delegated wallet found for owner ${entry.owner}`);
 
+  // eth_signTransaction signs the params AS GIVEN: nonce/gas/fees must be
+  // supplied here or the broadcast fails with "intrinsic gas too low".
+  const data = adaptiveExecuteCalldata(BigInt(positionId), maxAmountIn);
+  const [nonce, gasEstimate, fees] = await Promise.all([
+    publicClient.getTransactionCount({address: entry.owner as `0x${string}`}),
+    publicClient.estimateGas({
+      account: entry.owner as `0x${string}`,
+      to: cfg.slopePosition as `0x${string}`,
+      data,
+    }),
+    publicClient.estimateFeesPerGas(),
+  ]);
+
   const signed = await privy.wallets().ethereum().signTransaction(delegated.walletId, {
     // eth_signTransaction path: policy + aggregation are evaluated here.
     params: {
@@ -106,7 +159,11 @@ async function signAndBroadcast(
         to: cfg.slopePosition as `0x${string}`,
         chain_id: Number(cfg.chainId),
         value: "0x0",
-        data: adaptiveExecuteCalldata(BigInt(positionId), maxAmountIn),
+        data,
+        nonce: toHex(nonce),
+        gas_limit: toHex((gasEstimate * 120n) / 100n),
+        max_fee_per_gas: toHex(fees.maxFeePerGas),
+        max_priority_fee_per_gas: toHex(fees.maxPriorityFeePerGas ?? 100_000_000n),
       },
     },
     authorization_context: {authorization_private_keys: [privateKeyB64]},
@@ -123,7 +180,10 @@ async function signAndBroadcast(
   const hash = await publicClient.sendRawTransaction({serializedTransaction: raw});
   console.log(`[${positionId}] broadcast ${hash}`);
   const receipt = await publicClient.waitForTransactionReceipt({hash});
-  console.log(`[${positionId}] status: ${receipt.status} (block ${receipt.blockNumber})`);
+  if (receipt.status !== "success") throw new Error(`fill tx reverted: ${hash}`);
+  const skipped = decodeSkipReason(receipt);
+  if (skipped) throw new FillSkippedError(skipped);
+  console.log(`[${positionId}] filled (block ${receipt.blockNumber})`);
 }
 
 /** Terminal positions never sign again: recycle their aggregation slot
@@ -189,8 +249,13 @@ async function tick(): Promise<void> {
   const store = loadKeystore();
   const jobs: Promise<void>[] = [];
   for (const positionId of Object.keys(store)) {
-    if (store[positionId].disabled) continue; // can never fill; reason logged at startup
-    if (inFlight.has(positionId)) continue; // serialization per position
+    const entry = store[positionId];
+    if (entry.disabled) continue; // can never fill; reason logged at startup
+    // Serialization per OWNER WALLET, not per position: positions sharing a
+    // wallet share one nonce sequence (live: two parallel same-wallet fills
+    // raced nonces and rejected each other with "replacement underpriced").
+    const walletKey = entry.owner.toLowerCase();
+    if (inFlight.has(walletKey)) continue;
     const failuresBefore = failures.get(positionId) ?? 0;
     if (failuresBefore >= PARK_AFTER) continue; // parked: stop retrying
     const job = processPosition(positionId)
@@ -199,6 +264,13 @@ async function tick(): Promise<void> {
         return r;
       })
       .catch((e) => {
+        if (e instanceof FillSkippedError && e.reason === "TRANSFER_FAILED") {
+          // Deterministic: only an owner-side action (tokenIn balance +
+          // approval) can change it — the keeper is scoped out of both.
+          failures.set(positionId, PARK_AFTER);
+          console.error(`[${positionId}] PARKED (TRANSFER_FAILED): owner wallet needs tokenIn balance + approval — fund/approve from the frontend, then restart the keeper`);
+          return;
+        }
         if (isDeterministic(e)) {
           failures.set(positionId, PARK_AFTER);
           console.error(`[${positionId}] PARKED (deterministic, no retry):`, String((e as Error)?.message ?? e).slice(0, 300));
@@ -209,8 +281,8 @@ async function tick(): Promise<void> {
         console.error(`[${positionId}] error (${count}/${PARK_AFTER}):`, e.message ?? e);
         if (count >= PARK_AFTER) console.warn(`[${positionId}] PARKED — fix the cause and restart the keeper`);
       })
-      .finally(() => inFlight.delete(positionId));
-    inFlight.set(positionId, job);
+      .finally(() => inFlight.delete(walletKey));
+    inFlight.set(walletKey, job);
     jobs.push(job);
   }
   await Promise.allSettled(jobs);
