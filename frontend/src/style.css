@@ -10,6 +10,10 @@ body {
   background: #0b0e11;
   color: #e6e6e6;
 }
+/* Every rule below is scoped under `main` on purpose: the Privy login modal
+ * renders into the page DOM, and bare element selectors (e.g. `button`)
+ * bleed into it — a hidden submit button becomes visible and overlaps the
+ * email input, making it untypeable. */
 main {
   max-width: 560px;
   padding: 2rem;
@@ -17,11 +21,11 @@ main {
   border-radius: 12px;
   background: #10151c;
 }
-h1 {
+main h1 {
   margin: 0 0 0.2rem;
   letter-spacing: 0.12em;
 }
-.live {
+main .live {
   color: #19d17c;
   animation: blink 1.6s infinite;
   margin-left: 0.3rem;
@@ -31,12 +35,12 @@ h1 {
     opacity: 0.25;
   }
 }
-.tagline {
+main .tagline {
   margin-top: 0;
   color: #8a97a8;
   font-size: 0.8rem;
 }
-button {
+main button {
   display: block;
   width: 100%;
   margin: 0.5rem 0;
@@ -48,34 +52,34 @@ button {
   font: inherit;
   cursor: pointer;
 }
-button:hover:not(:disabled) {
+main button:hover:not(:disabled) {
   border-color: #19d17c;
 }
-button:disabled {
+main button:disabled {
   opacity: 0.55;
   cursor: default;
 }
-.wallet code,
-.status {
+main .wallet code,
+main .status {
   font-size: 0.78rem;
   color: #9fe8c0;
   word-break: break-all;
 }
-.muted {
+main .muted {
   color: #8a97a8;
   font-size: 0.78rem;
 }
-footer {
+main footer {
   margin-top: 1.5rem;
   display: flex;
   justify-content: space-between;
   color: #55637a;
   font-size: 0.72rem;
 }
-footer code {
+main footer code {
   font-size: 0.72rem;
 }
-.link {
+main .link {
   width: auto;
   margin: 0;
   padding: 0;
