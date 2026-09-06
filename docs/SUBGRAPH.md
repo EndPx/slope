@@ -28,6 +28,16 @@ Entities (SPEC section 6): `Position`, `Fill`, `Skip`, `BenchmarkComparison`.
 
 The mapping is pure event indexing (zero `eth_calls`). `Position.startTimestamp` is the creation block time — the event itself carries no start time.
 
+## Live Consumer — The Keeper
+
+The keeper is the subgraph's production consumer (track requirement: meaningful work with live Graph data, not a dashboard-only index). Every tick (`keeper/src/keeper.ts`):
+
+1. **Queries the pinned versioned endpoint** above with the API key (`keeper/src/subgraph.ts`) for active positions, their indexed `executedAmount`, the newest fill timestamp, and the five newest skips — plus `_meta.block.number`.
+2. **Selects candidates without spending RPC** (`keeper/src/candidates.ts`, unit-tested): not-due positions are dropped using the indexed `executedAmount` + the shared curve model with the position's own shape; positions never delegated to this keeper are logged; a `TRANSFER_FAILED` skip within the last 15 minutes parks the position immediately (only an owner-side fund+approve can change it); a recent streak of impact/bounds/quote skips degrades priority for route review.
+3. **Ranks the remainder by estimated due increment** (largest first) and executes — but only after re-reading the position's authoritative state on-chain: the final authorization is recomputed from the contract state, never from indexed data, and price/quotes/slippage are enforced by the contract during execution.
+
+**No-fallback rule**: if the subgraph is unreachable, the tick is skipped and logged (`SUBGRAPH UNREACHABLE — no execution this tick (no fallback path)`); the keeper never substitutes local data, because that would invalidate the live-Graph-consumption claim. The `_meta` block is compared against the chain head every tick and a lag above 50 blocks logs an explicit staleness warning — quantifying exactly why execution-critical state is re-verified on-chain (SPEC section 5).
+
 ## Redeploying
 
 ```sh
