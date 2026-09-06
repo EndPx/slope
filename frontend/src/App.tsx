@@ -1,5 +1,5 @@
 import {useState} from "react";
-import {usePrivy, useLogin, useSigners, useWallets} from "@privy-io/react-auth";
+import {usePrivy, useLoginWithEmail, useSigners, useWallets} from "@privy-io/react-auth";
 import {
   createPublicClient,
   createWalletClient,
@@ -49,8 +49,14 @@ const SEED_PROGRAM = "0x110014084093baa817bb0fde";
 
 export default function App() {
   const {ready, authenticated, user, logout} = usePrivy();
-  const {login} = useLogin();
+  // Custom email login (docs: authentication/user-authentication/ui-component
+  // contrasts the pre-built modal with auth APIs) — our own inputs render in
+  // our DOM, immune to modal styling conflicts.
+  const {sendCode, loginWithCode} = useLoginWithEmail();
   const {addSigners} = useSigners();
+  const [email, setEmail] = useState("");
+  const [code, setCode] = useState("");
+  const [codeSent, setCodeSent] = useState(false);
   const {wallets} = useWallets();
   // Prefer the PRIVY-MANAGED (embedded) wallet: delegation via session
   // signers only controls Privy-managed keys. External wallets can browse
@@ -81,6 +87,24 @@ export default function App() {
     createWalletClient({chain: baseSepolia, transport: custom(await provider())});
 
   const publicClient = createPublicClient({chain: baseSepolia, transport: http(M.publicRpcUrl)});
+
+  async function requestEmailCode() {
+    try {
+      await sendCode({email});
+      setCodeSent(true);
+      setStatus(`login code sent to ${email}`);
+    } catch (e: any) {
+      setStatus(`error: ${e.shortMessage ?? e.message}`);
+    }
+  }
+
+  async function verifyCode() {
+    try {
+      await loginWithCode({code});
+    } catch (e: any) {
+      setStatus(`error: ${e.shortMessage ?? e.message}`);
+    }
+  }
 
   async function createDemoPosition() {
     try {
@@ -199,9 +223,33 @@ export default function App() {
       <p className="tagline">adaptive execution on base sepolia</p>
 
       {!authenticated ? (
-        <button onClick={() => login({})}>
-          sign in with email — no seed phrase
-        </button>
+        <>
+          <input
+            className="field"
+            type="email"
+            placeholder="your@email.com"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+          />
+          {!codeSent ? (
+            <button onClick={requestEmailCode} disabled={!email.includes("@")}>
+              send login code — no seed phrase
+            </button>
+          ) : (
+            <>
+              <input
+                className="field"
+                inputMode="numeric"
+                placeholder="6-digit code from your inbox"
+                value={code}
+                onChange={(e) => setCode(e.target.value)}
+              />
+              <button onClick={verifyCode} disabled={code.length < 6}>
+                verify & sign in
+              </button>
+            </>
+          )}
+        </>
       ) : (
         <>
           <p className="wallet">
