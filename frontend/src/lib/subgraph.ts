@@ -6,7 +6,7 @@
  */
 const QUERY_URL =
   (import.meta.env.VITE_GRAPH_QUERY_URL as string | undefined) ??
-  "https://api.studio.thegraph.com/query/1758808/slope-base-sepolia/v0.0.1";
+  "https://api.studio.thegraph.com/query/1758808/slope-base-sepolia/v0.0.2";
 const API_KEY = (import.meta.env.VITE_GRAPH_API_KEY as string | undefined) ?? "";
 
 export async function gql<T>(query: string): Promise<T> {
@@ -30,12 +30,16 @@ export interface Fill {
   executionPrice: bigint;
   timestamp: bigint;
   impactChecked: boolean;
+  blockNumber: bigint;
+  txHash: string;
 }
 
 export interface Skip {
   id: string;
   reason: string;
   timestamp: bigint;
+  blockNumber: bigint;
+  txHash: string;
 }
 
 export interface Benchmark {
@@ -65,6 +69,10 @@ export interface Position {
   maxSlippageBps: number;
   isActive: boolean;
   executedAmount: bigint;
+  creationTx: string;
+  creationBlock: bigint;
+  cancelledAt: bigint | null;
+  completedAt: bigint | null;
   fills: Fill[];
   skips: Skip[];
   benchmark: Benchmark | null;
@@ -74,10 +82,11 @@ const POSITION_FIELDS = `
   id owner tokenIn tokenOut decimalsIn decimalsOut
   totalBudget minFillAmount curveShape startTimestamp duration
   minPrice maxPrice maxSlippageBps isActive executedAmount
+  creationTx creationBlock cancelledAt completedAt
   fills(orderBy: timestamp, orderDirection: asc) {
-    id amountIn amountOut executionPrice timestamp impactChecked
+    id amountIn amountOut executionPrice timestamp impactChecked blockNumber txHash
   }
-  skips(orderBy: timestamp, orderDirection: asc) { id reason timestamp }
+  skips(orderBy: timestamp, orderDirection: asc) { id reason timestamp blockNumber txHash }
   benchmark {
     fillCount elapsedAtLastFill plannedExecuted actualExecuted
     actualVWAP twapVWAP improvementBps
@@ -101,6 +110,10 @@ function parsePosition(raw: any): Position {
     maxSlippageBps: Number(raw.maxSlippageBps),
     isActive: raw.isActive,
     executedAmount: BigInt(raw.executedAmount),
+    creationTx: raw.creationTx ?? "",
+    creationBlock: BigInt(raw.creationBlock ?? 0),
+    cancelledAt: raw.cancelledAt != null ? BigInt(raw.cancelledAt) : null,
+    completedAt: raw.completedAt != null ? BigInt(raw.completedAt) : null,
     fills: (raw.fills ?? []).map((f: any) => ({
       id: f.id,
       amountIn: BigInt(f.amountIn),
@@ -108,8 +121,16 @@ function parsePosition(raw: any): Position {
       executionPrice: BigInt(f.executionPrice),
       timestamp: BigInt(f.timestamp),
       impactChecked: f.impactChecked,
+      blockNumber: BigInt(f.blockNumber),
+      txHash: f.txHash,
     })),
-    skips: (raw.skips ?? []).map((s: any) => ({id: s.id, reason: s.reason, timestamp: BigInt(s.timestamp)})),
+    skips: (raw.skips ?? []).map((s: any) => ({
+      id: s.id,
+      reason: s.reason,
+      timestamp: BigInt(s.timestamp),
+      blockNumber: BigInt(s.blockNumber),
+      txHash: s.txHash,
+    })),
     benchmark: raw.benchmark
       ? {
           fillCount: raw.benchmark.fillCount,
@@ -131,15 +152,21 @@ export async function fetchPosition(id: string): Promise<Position | null> {
 
 export async function fetchPositionsByOwner(owner: string): Promise<Position[]> {
   const data = await gql<{positions: any[]}>(
-    `{ positions(where: { owner: "${owner.toLowerCase()}" }, orderBy: id, orderDirection: desc) { ${POSITION_FIELDS} } }`,
+    `{ positions(where: { owner: "${owner.toLowerCase()}" }) { ${POSITION_FIELDS} } }`,
   );
-  return data.positions.map(parsePosition);
+  return data.positions
+    .map(parsePosition)
+    .sort((a, b) => (BigInt(b.id) > BigInt(a.id) ? 1 : BigInt(b.id) < BigInt(a.id) ? -1 : 0));
 }
 
-/** All indexed positions — public on-chain data, viewable without login. */
+/** All indexed positions — public on-chain data, viewable without login.
+ *  Sorted numerically client-side: entity ids are strings, so the graph's
+ *  own id ordering is lexicographic ("9" > "11"). */
 export async function fetchPositions(): Promise<Position[]> {
-  const data = await gql<{positions: any[]}>(`{ positions(orderBy: id, orderDirection: desc) { ${POSITION_FIELDS} } }`);
-  return data.positions.map(parsePosition);
+  const data = await gql<{positions: any[]}>(`{ positions { ${POSITION_FIELDS} } }`);
+  return data.positions
+    .map(parsePosition)
+    .sort((a, b) => (BigInt(b.id) > BigInt(a.id) ? 1 : BigInt(b.id) < BigInt(a.id) ? -1 : 0));
 }
 
 /** Compact aggregate: active count, executed volume, fills in 24h, head. */

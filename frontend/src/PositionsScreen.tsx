@@ -45,6 +45,7 @@ export function PositionsScreen(props: {initialSelected: bigint | null; onGoCrea
   if (selected !== null) {
     return (
       <section className="flex flex-col gap-4">
+        <StatusBar />
         <button className="linklike" style={{alignSelf: "flex-start"}} onClick={() => setSelected(null)}>
           all positions
         </button>

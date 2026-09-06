@@ -15,6 +15,7 @@ import {CreateScreen} from "./CreateScreen";
 import {PositionsScreen} from "./PositionsScreen";
 import {ExecutionScreen} from "./ExecutionScreen";
 import {PerformanceScreen} from "./PerformanceScreen";
+import {ActivityScreen} from "./ActivityScreen";
 import {FaucetPanel} from "./FaucetPanel";
 import {fetchHeadBlock} from "./lib/subgraph";
 import MANIFEST from "./manifest.json";
@@ -160,16 +161,7 @@ export default function App() {
             }}
           />
         )}
-        {tab === "activity" && (
-          <div className="empty">
-            <h2 className="display" style={{fontSize: "1.4rem"}}>
-              The live event stream lands here
-            </h2>
-            <p className="note" style={{marginTop: "0.5rem"}}>
-              Every indexed event — fills, holds, schedules — with transaction links you can check yourself.
-            </p>
-          </div>
-        )}
+        {tab === "activity" && <ActivityScreen />}
       </div>
 
       <footer className="attribution">

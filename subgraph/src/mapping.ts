@@ -41,6 +41,8 @@ export function handlePositionCreated(event: PositionCreated): void {
   position.maxSlippageBps = event.params.maxSlippageBps;
   position.isActive = true;
   position.executedAmount = BigInt.zero();
+  position.creationTx = event.transaction.hash;
+  position.creationBlock = event.block.number;
   position.save();
 }
 
@@ -81,6 +83,7 @@ export function handlePositionCompleted(event: PositionCompleted): void {
   const position = Position.load(event.params.positionId.toString());
   if (position === null) return;
   position.isActive = false;
+  position.completedAt = event.block.timestamp;
   position.save();
 }
 
@@ -88,6 +91,7 @@ export function handlePositionCancelled(event: PositionCancelled): void {
   const position = Position.load(event.params.positionId.toString());
   if (position === null) return;
   position.isActive = false;
+  position.cancelledAt = event.block.timestamp;
   position.save();
 }
 

@@ -49,7 +49,7 @@ export function loadConfig(): KeeperConfig {
     // point at a newer version after a redeploy — never a generic URL.
     graphQueryUrl:
       process.env.GRAPH_QUERY_URL ??
-      "https://api.studio.thegraph.com/query/1758808/slope-base-sepolia/v0.0.1",
+      "https://api.studio.thegraph.com/query/1758808/slope-base-sepolia/v0.0.2",
   };
 }
 

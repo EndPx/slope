@@ -26,6 +26,14 @@ type Position @entity(immutable: false) {
   isActive: Boolean!
   "advances by amountIn with every Fill"
   executedAmount: BigInt!
+  "tx hash of the creation transaction (Activity stream)"
+  creationTx: Bytes!
+  "block of the creation transaction"
+  creationBlock: BigInt!
+  "set when the owner cancels (Activity stream)"
+  cancelledAt: BigInt
+  "set when the budget finishes executing (Activity stream)"
+  completedAt: BigInt
   fills: [Fill!]! @derivedFrom(field: "position")
   skips: [Skip!]! @derivedFrom(field: "position")
   benchmark: BenchmarkComparison @derivedFrom(field: "position")
