@@ -4,9 +4,9 @@
  * language ("allocate", "pace", "rails") — internal names appear only in the
  * small print and the explorer link.
  */
-import {useMemo, useState} from "react";
+import {useEffect, useMemo, useState} from "react";
 import {useLogin, useSigners, useWallets} from "@privy-io/react-auth";
-import {createWalletClient, custom, encodeFunctionData, http, parseAbi, parseUnits, createPublicClient} from "viem";
+import {createWalletClient, custom, encodeFunctionData, formatUnits, http, parseAbi, parseUnits, createPublicClient} from "viem";
 import {baseSepolia} from "viem/chains";
 import MANIFEST from "./manifest.json";
 import {CurvePreview, SHAPE_COLOR, SHAPE_NAME} from "./CurvePreview";
@@ -24,6 +24,7 @@ const ABI = parseAbi([
   "function createPosition((address tokenIn,address tokenOut,uint256 totalBudget,uint256 minFillAmount,uint256 duration,uint8 curveShape,uint256 minPrice,uint256 maxPrice,uint16 maxSlippageBps) params,(address router,(address maker,uint256 traits,bytes data) order,bytes takerTraitsAndData) route)",
   "function approve(address spender,uint256 amount) returns (bool)",
   "function balanceOf(address) view returns (uint256)",
+  "function allowance(address,address) view returns (uint256)",
 ]);
 
 // Ungated seeded strategy (manifest provenance): maker + salted program.
@@ -57,6 +58,13 @@ export function CreateScreen(props: {onCreated: (id: bigint) => void}) {
     text: "",
   });
   const [createdId, setCreatedId] = useState<bigint | null>(null);
+  // Custody preview: the contract pulls each slice from the wallet, so both
+  // inventory and allowance decide whether execution can even start. Live
+  // read, polled — the same facts a stale approval turns into TRANSFER_FAILED.
+  const [custody, setCustody] = useState<{balance: bigint | null; allowance: bigint | null}>({
+    balance: null,
+    allowance: null,
+  });
 
   const budget = useMemo(() => {
     try {
@@ -89,6 +97,29 @@ export function CreateScreen(props: {onCreated: (id: bigint) => void}) {
   const railsInvalid = floorRaw !== 0n && ceilingRaw !== 0n && floorRaw >= ceilingRaw;
   const inputsValid = budget > 0n && floorRaw > 0n && ceilingRaw > 0n && slippageBps > 0 && !railsInvalid;
 
+  useEffect(() => {
+    if (!wallet) return;
+    let stop = false;
+    const read = async () => {
+      try {
+        const [balance, allowance] = await Promise.all([
+          publicClient.readContract({address: M.dETH, abi: ABI, functionName: "balanceOf", args: [wallet.address as `0x${string}`]}),
+          publicClient.readContract({address: M.dETH, abi: ABI, functionName: "allowance", args: [wallet.address as `0x${string}`, M.slopePosition]}),
+        ]);
+        if (!stop) setCustody({balance, allowance});
+      } catch {
+        /* rpc hiccup — keep the last reading */
+      }
+    };
+    read();
+    const t = setInterval(read, 12_000);
+    return () => {
+      stop = true;
+      clearInterval(t);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [wallet?.address, budget]);
+
   const walletClient = async () => {
     const eth = (await wallet!.getEthereumProvider()) as any;
     try {
@@ -115,12 +146,14 @@ export function CreateScreen(props: {onCreated: (id: bigint) => void}) {
         data: encodeFunctionData({abi: ABI, functionName: "mint", args: [address, budget]}),
       });
 
-      setStatus({kind: "busy", text: "Approving the contract to pull slices as scheduled…"});
-      await wc.sendTransaction({
-        account: address,
-        to: M.dETH,
-        data: encodeFunctionData({abi: ABI, functionName: "approve", args: [M.slopePosition, budget]}),
-      });
+      if (custody.allowance === null || custody.allowance < budget) {
+        setStatus({kind: "busy", text: "Approving the contract to pull slices as scheduled…"});
+        await wc.sendTransaction({
+          account: address,
+          to: M.dETH,
+          data: encodeFunctionData({abi: ABI, functionName: "approve", args: [M.slopePosition, budget]}),
+        });
+      }
 
       setStatus({kind: "busy", text: "Recording the schedule on-chain…"});
       const hash = await wc.sendTransaction({
@@ -277,6 +310,22 @@ export function CreateScreen(props: {onCreated: (id: bigint) => void}) {
             </p>
           </div>
         </details>
+
+        {authenticated && custody.balance !== null && (
+          <div>
+            <p className="label">Custody check</p>
+            <p className="note">
+              Wallet inventory <span className="num">{formatUnits(custody.balance, 18)}</span> dETH. Contract
+              allowance <span className="num">{formatUnits(custody.allowance ?? 0n, 18)}</span> dETH —{" "}
+              {custody.allowance !== null && custody.allowance >= budget
+                ? "already covers this schedule."
+                : `Create includes a fresh approval of ${amount} dETH.`}
+            </p>
+            <p className="note">
+              Approvals are exact: the final slice consumes them, so the next schedule needs a fresh one.
+            </p>
+          </div>
+        )}
 
         <div className="mt-1">
           {authenticated ? (

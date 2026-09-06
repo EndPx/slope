@@ -39,6 +39,11 @@ export class Spring {
     return this.value;
   }
 
+  /** True when no rAF loop needs to keep running. */
+  get settled(): boolean {
+    return this.raf === 0;
+  }
+
   dispose(): void {
     cancelAnimationFrame(this.raf);
     this.raf = 0;
