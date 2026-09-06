@@ -135,3 +135,38 @@ export async function fetchPositionsByOwner(owner: string): Promise<Position[]> 
   );
   return data.positions.map(parsePosition);
 }
+
+/** All indexed positions — public on-chain data, viewable without login. */
+export async function fetchPositions(): Promise<Position[]> {
+  const data = await gql<{positions: any[]}>(`{ positions(orderBy: id, orderDirection: desc) { ${POSITION_FIELDS} } }`);
+  return data.positions.map(parsePosition);
+}
+
+/** Compact aggregate: active count, executed volume, fills in 24h, head. */
+export interface ChainSummary {
+  activeCount: number;
+  executedVolume: bigint;
+  fills24h: number;
+  indexedBlock: bigint;
+}
+
+export async function fetchSummary(): Promise<ChainSummary> {
+  const cutoff = Math.floor(Date.now() / 1000) - 86_400;
+  const data = await gql<{positions: any[]; _meta: any}>(
+    `{ positions(orderBy: id) { isActive executedAmount fills(where: { timestamp_gt: "${cutoff}" }) { id } } _meta { block { number } } }`,
+  );
+  let activeCount = 0;
+  let executedVolume = 0n;
+  let fills24h = 0;
+  for (const p of data.positions) {
+    if (p.isActive) activeCount += 1;
+    executedVolume += BigInt(p.executedAmount);
+    fills24h += (p.fills ?? []).length;
+  }
+  return {activeCount, executedVolume, fills24h, indexedBlock: BigInt(data._meta.block.number)};
+}
+
+export async function fetchHeadBlock(): Promise<bigint> {
+  const data = await gql<{_meta: any}>(`{ _meta { block { number } } }`);
+  return BigInt(data._meta.block.number);
+}

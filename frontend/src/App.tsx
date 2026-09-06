@@ -1,16 +1,66 @@
 /**
- * App shell — wayfinding, auth gate, attribution footer. Screen 1 is live;
- * Positions and Performance are honest invitations until their commits land
- * (implementation order: one screen per review round).
+ * App shell — wayfinding, header chrome, attribution footer.
+ *
+ * Access pattern: every screen is viewable WITHOUT login (the data is
+ * public and on-chain); signing in is only required to transact. The live
+ * indicator states the truth — keeper server reachability and the
+ * subgraph's actual lag behind the chain head.
  */
 import {useEffect, useState} from "react";
 import {useLogin, usePrivy, useWallets} from "@privy-io/react-auth";
+import {createPublicClient, http} from "viem";
+import {baseSepolia} from "viem/chains";
 import "./style.css";
 import {CreateScreen} from "./CreateScreen";
+import {PositionsScreen} from "./PositionsScreen";
 import {ExecutionScreen} from "./ExecutionScreen";
 import {FaucetPanel} from "./FaucetPanel";
+import {fetchHeadBlock} from "./lib/subgraph";
+import MANIFEST from "./manifest.json";
 
-type Tab = "create" | "positions" | "performance";
+const MANIFEST_APP = MANIFEST as {publicRpcUrl: string};
+
+type Tab = "create" | "positions" | "performance" | "activity";
+
+/** Honest live indicator: it says the keeper is running only when the
+ *  keeper server answers, and names the subgraph's actual lag. */
+function LiveStatus() {
+  const [keeper, setKeeper] = useState<boolean | null>(null);
+  const [lag, setLag] = useState<number | null>(null);
+  useEffect(() => {
+    let stop = false;
+    const load = async () => {
+      let k: boolean;
+      try {
+        const r = await fetch("http://localhost:8787/health");
+        k = r.ok;
+      } catch {
+        k = false;
+      }
+      try {
+        const head = await createPublicClient({chain: baseSepolia, transport: http(MANIFEST_APP.publicRpcUrl)}).getBlockNumber();
+        const indexed = await fetchHeadBlock();
+        if (!stop) setLag(Number(head - indexed));
+      } catch {
+        if (!stop) setLag(null);
+      }
+      if (!stop) setKeeper(k);
+    };
+    load();
+    const t = setInterval(load, 15_000);
+    return () => {
+      stop = true;
+      clearInterval(t);
+    };
+  }, []);
+  const healthy = keeper === true && lag !== null && lag <= 50;
+  return (
+    <span className={`livestatus ${healthy ? "ok" : "warn"}`} title="keeper server on this machine, and how far the subgraph trails the chain head">
+      <span className="livedot">●</span> keeper {keeper === null ? "…" : keeper ? "live" : "offline"}
+      {lag !== null && <> · subgraph {lag <= 0 ? "synced" : `−${lag} blocks`}</>}
+    </span>
+  );
+}
 
 export default function App() {
   const {ready, logout} = usePrivy();
@@ -22,11 +72,6 @@ export default function App() {
   const [livePositionId, setLivePositionId] = useState<bigint | null>(
     localStorage.getItem("positionId") ? BigInt(localStorage.getItem("positionId")!) : null,
   );
-
-  // Returning to Create with a live schedule shows its id as context.
-  useEffect(() => {
-    if (livePositionId !== null && tab === "create") return;
-  }, [livePositionId, tab]);
 
   if (!ready) {
     return (
@@ -50,6 +95,7 @@ export default function App() {
               ["create", "Create"],
               ["positions", "Positions"],
               ["performance", "Performance"],
+              ["activity", "Activity"],
             ] as Array<[Tab, string]>
           ).map(([key, label]) => (
             <button key={key} aria-current={tab === key} onClick={() => setTab(key)}>
@@ -58,6 +104,7 @@ export default function App() {
           ))}
         </nav>
         <span style={{marginLeft: "auto"}} />
+        <LiveStatus />
         {wallet && (
           <span style={{position: "relative"}}>
             <button className="linklike" onClick={() => setShowFaucet((v) => !v)}>
@@ -96,45 +143,36 @@ export default function App() {
             <CreateScreen onCreated={(id) => setLivePositionId(id)} />
           </>
         )}
-        {tab === "positions" &&
-          (livePositionId !== null ? (
-            <ExecutionScreen positionId={livePositionId} />
-          ) : (
-            <div className="empty">
-              <h2 className="display">No schedules yet</h2>
-              <p className="note" style={{marginTop: "0.5rem"}}>
-                Set how much and how fast — your schedules and every slice they execute will appear here.
-              </p>
-              <button className="act" style={{marginTop: "1.1rem", maxWidth: 260}} onClick={() => setTab("create")}>
-                Set a schedule
-              </button>
-            </div>
-          ))}
+        {tab === "positions" && <PositionsScreen initialSelected={livePositionId} onGoCreate={() => setTab("create")} />}
         {tab === "performance" && (
           <div className="empty">
-            <h2 className="display">Performance appears after the first slice</h2>
+            <h2 className="display" style={{fontSize: "1.4rem"}}>
+              Performance grading lands with the next screen
+            </h2>
             <p className="note" style={{marginTop: "0.5rem"}}>
-              Realized execution is graded against a plain linear schedule at the same prices — including the cases
-              where the curve loses. Nothing is hidden.
+              Realized execution is graded against a plain linear schedule at the same observed prices — including the
+              cases where the curve loses.
             </p>
-            <button className="act" style={{marginTop: "1.1rem", maxWidth: 260}} onClick={() => setTab("create")}>
-              Set a schedule
-            </button>
+          </div>
+        )}
+        {tab === "activity" && (
+          <div className="empty">
+            <h2 className="display" style={{fontSize: "1.4rem"}}>
+              The live event stream lands here
+            </h2>
+            <p className="note" style={{marginTop: "0.5rem"}}>
+              Every indexed event — fills, holds, schedules — with transaction links you can check yourself.
+            </p>
           </div>
         )}
       </div>
 
       <footer className="attribution">
         <span>
-          <code>Powered by Aqua — © Degensoft Ltd 2025</code> · <code>Powered by SwapVM — © Degensoft Ltd 2025</code>
+          <code>Powered by Aqua — © Degensoft Ltd 2025 · Powered by SwapVM — © Degensoft Ltd 2025</code>
         </span>
         <span>
           powered by privy · the graph ·{" "}
-          {!ready ? null : (
-            <button className="linklike" onClick={() => login({})} hidden>
-              sign in
-            </button>
-          )}
           <a
             className="linklike"
             href="https://sepolia.basescan.org/address/0xC7c6FaD1C2A0e8961E34D40c39C059ECE6dBB8Cc"

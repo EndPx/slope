@@ -4,7 +4,7 @@
  * language ("allocate", "pace", "rails") — internal names appear only in the
  * small print and the explorer link.
  */
-import {useEffect, useMemo, useState} from "react";
+import {useEffect, useMemo, useRef, useState} from "react";
 import {useLogin, useSigners, useWallets} from "@privy-io/react-auth";
 import {createWalletClient, custom, encodeFunctionData, formatUnits, http, parseAbi, parseUnits, createPublicClient} from "viem";
 import {baseSepolia} from "viem/chains";
@@ -62,6 +62,9 @@ export function CreateScreen(props: {onCreated: (id: bigint) => void}) {
     text: "",
   });
   const [createdId, setCreatedId] = useState<bigint | null>(null);
+  // Sign-in-to-create: the full form works without a wallet; signing in
+  // resumes straight into the create flow that was requested.
+  const wantCreateRef = useRef(false);
   // Custody preview: the contract pulls each slice from the wallet, so both
   // inventory and allowance decide whether execution can even start. Live
   // read, polled — the same facts a stale approval turns into TRANSFER_FAILED.
@@ -207,6 +210,14 @@ export function CreateScreen(props: {onCreated: (id: bigint) => void}) {
 
   const busy = status.kind === "busy";
 
+  // Resume into the create flow once the requested sign-in has a wallet.
+  useEffect(() => {
+    if (!authenticated || !wantCreateRef.current) return;
+    wantCreateRef.current = false;
+    if (createdId === null) createSchedule();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [authenticated]);
+
   return (
     <section className="grid gap-8 lg:grid-cols-[400px_1fr] lg:gap-10">
       <div className="flex flex-col gap-5">
@@ -323,8 +334,15 @@ export function CreateScreen(props: {onCreated: (id: bigint) => void}) {
               </button>
             )
           ) : (
-            <button className="act primary" onClick={() => login({})}>
-              Sign in with email — no seed phrase
+            <button
+              className="act primary"
+              disabled={!inputsValid}
+              onClick={() => {
+                wantCreateRef.current = true;
+                login({});
+              }}
+            >
+              Sign in to create
             </button>
           )}
           {status.text && (

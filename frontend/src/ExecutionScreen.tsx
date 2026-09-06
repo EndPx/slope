@@ -121,6 +121,8 @@ export function ExecutionScreen(props: {positionId: bigint}) {
   const remainingBudget = position.totalBudget - position.executedAmount;
   const remainingTime = endTimestamp > BigInt(now) ? endTimestamp - BigInt(now) : 0n;
   const windowClosed = BigInt(now) >= endTimestamp;
+  // Revoke is an owner action: only the wallet that owns the schedule sees it.
+  const own = Boolean(wallet && position.owner.toLowerCase() === wallet.address.toLowerCase());
   const statusLabel = !position.isActive
     ? position.executedAmount >= position.totalBudget
       ? "completed"
@@ -190,9 +192,15 @@ export function ExecutionScreen(props: {positionId: bigint}) {
             )}
           </p>
         </div>
-        <button className="act" style={{maxWidth: 160}} disabled={!position.isActive || note.kind === "busy"} onClick={revoke}>
-          {note.kind === "busy" ? "Cancelling…" : "Revoke"}
-        </button>
+        {own ? (
+          <button className="act" style={{maxWidth: 160}} disabled={!position.isActive || note.kind === "busy"} onClick={revoke}>
+            {note.kind === "busy" ? "Cancelling…" : "Revoke"}
+          </button>
+        ) : (
+          <p className="note" style={{maxWidth: 180}}>
+            Not yours — read-only. Revoke belongs to the schedule's owner.
+          </p>
+        )}
       </div>
       {note.text && <p className={`note ${note.kind === "err" ? "err" : note.kind === "ok" ? "ok" : ""}`}>{note.text}</p>}
 
