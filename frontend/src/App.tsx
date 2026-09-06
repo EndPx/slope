@@ -12,6 +12,7 @@ import {createPublicClient, http} from "viem";
 import {baseSepolia} from "viem/chains";
 import "./style.css";
 import {CreateScreen} from "./CreateScreen";
+import {LandingScreen} from "./LandingScreen";
 import {PositionsScreen} from "./PositionsScreen";
 import {ExecutionScreen} from "./ExecutionScreen";
 import {PerformanceScreen} from "./PerformanceScreen";
@@ -22,7 +23,7 @@ import MANIFEST from "./manifest.json";
 
 const MANIFEST_APP = MANIFEST as {publicRpcUrl: string};
 
-type Tab = "create" | "positions" | "performance" | "activity";
+type Tab = "landing" | "create" | "positions" | "performance" | "activity";
 
 /** Honest live indicator: it says the keeper is running only when the
  *  keeper server answers, and names the subgraph's actual lag. */
@@ -69,7 +70,11 @@ export default function App() {
   const {login} = useLogin();
   const {wallets} = useWallets();
   const wallet = wallets.find((w) => w.walletClientType === "privy") ?? wallets[0];
-  const [tab, setTab] = useState<Tab>("create");
+  const [tab, setTab] = useState<Tab>(() => {
+    // Returning users with a schedule go straight to Create; newcomers get
+    // the landing.
+    return localStorage.getItem("positionId") ? "create" : "landing";
+  });
   const [showFaucet, setShowFaucet] = useState(false);
   const [livePositionId, setLivePositionId] = useState<bigint | null>(
     localStorage.getItem("positionId") ? BigInt(localStorage.getItem("positionId")!) : null,
@@ -95,6 +100,7 @@ export default function App() {
         <nav aria-label="Screens">
           {(
             [
+              ["landing", "Home"],
               ["create", "Create"],
               ["positions", "Positions"],
               ["performance", "Performance"],
@@ -136,6 +142,7 @@ export default function App() {
       </header>
 
       <div className="work">
+        {tab === "landing" && <LandingScreen onStart={() => setTab("create")} />}
         {tab === "create" && (
           <>
             {livePositionId !== null && (

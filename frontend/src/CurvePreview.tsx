@@ -26,7 +26,7 @@ function curvePoints(shape: number, height: number): Float64Array {
   return pts;
 }
 
-export function CurvePreview(props: {selected: number; durationSeconds: number}) {
+export function CurvePreview(props: {selected: number; durationSeconds: number; intro?: boolean}) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const pointsRef = useRef<Float64Array[]>([]);
   const alphasRef = useRef([1, 0.4, 0.4]);
@@ -34,6 +34,10 @@ export function CurvePreview(props: {selected: number; durationSeconds: number})
   const loopRef = useRef(0);
   const sizeRef = useRef({w: 0, h: 0});
   const drawRef = useRef<() => void>(() => {});
+  // Landing intro: ruler first, then the three curves draw themselves left
+  // to right, in sequence. ~2s total, then it stops — no loop, no drift.
+  const revealRef = useRef<number[]>(props.intro ? [0, 0, 0] : [1, 1, 1]);
+  const rulerRevealRef = useRef(props.intro ? 0 : 1);
 
   // One permanent effect: canvas setup, drawing, spring loop.
   useEffect(() => {
@@ -46,6 +50,7 @@ export function CurvePreview(props: {selected: number; durationSeconds: number})
       if (!w) return;
       ctx.clearRect(0, 0, w, h);
       const innerW = w - M.left - M.right;
+      const rulerFrac = rulerRevealRef.current;
 
       // Guides: quiet hairlines; bare mono numbers on the left (the "%" is
       // in the caption, not repeated per tick).
@@ -54,11 +59,12 @@ export function CurvePreview(props: {selected: number; durationSeconds: number})
       ctx.font = "10px 'IBM Plex Mono', monospace";
       ctx.fillStyle = "#8fa6a3";
       ctx.textAlign = "right";
+      ctx.globalAlpha = rulerFrac;
       for (const p of [0, 0.25, 0.5, 0.75, 1]) {
         const y = M.top + (1 - p) * (h - M.top - M.bottom);
         ctx.beginPath();
         ctx.moveTo(M.left, y + 0.5);
-        ctx.lineTo(w - M.right, y + 0.5);
+        ctx.lineTo(M.left + (w - M.left - M.right) * rulerFrac, y + 0.5);
         ctx.stroke();
         ctx.fillText(`${p * 100}`, M.left - 7, y + 3);
       }
@@ -68,31 +74,38 @@ export function CurvePreview(props: {selected: number; durationSeconds: number})
       ctx.strokeStyle = "#254048";
       ctx.beginPath();
       ctx.moveTo(M.left, rulerY);
-      ctx.lineTo(w - M.right, rulerY);
+      ctx.lineTo(M.left + innerW * rulerFrac, rulerY);
       ctx.stroke();
       ctx.textAlign = "center";
       const ticks = 8;
-      for (let i = 0; i <= ticks; i++) {
-        const x = M.left + (i / ticks) * innerW;
-        ctx.beginPath();
-        ctx.moveTo(x, rulerY);
-        ctx.lineTo(x, rulerY + (i % 4 === 0 ? 5 : 3));
-        ctx.stroke();
-        if (i % 4 === 0) {
-          const seconds = Math.round((i / ticks) * Number(canvas.dataset.duration ?? 900));
-          ctx.fillText(seconds === 0 ? "0s" : `${Math.round(seconds / 60)} min`, x, rulerY + 15);
+      if (rulerFrac >= 1) {
+        for (let i = 0; i <= ticks; i++) {
+          const x = M.left + (i / ticks) * innerW;
+          ctx.beginPath();
+          ctx.moveTo(x, rulerY);
+          ctx.lineTo(x, rulerY + (i % 4 === 0 ? 5 : 3));
+          ctx.stroke();
+          if (i % 4 === 0) {
+            const seconds = Math.round((i / ticks) * Number(canvas.dataset.duration ?? 900));
+            ctx.fillText(seconds === 0 ? "0s" : `${Math.round(seconds / 60)} min`, x, rulerY + 15);
+          }
         }
       }
+      ctx.globalAlpha = 1;
 
       // Three equal-weight curves; only opacity separates the selection.
+      // During the intro each curve draws itself left to right.
       for (let s = 0; s < 3; s++) {
+        const reveal = revealRef.current[s];
+        if (reveal <= 0) continue;
         ctx.strokeStyle = SHAPE_COLOR[s];
         ctx.globalAlpha = alphasRef.current[s];
         ctx.lineWidth = 2;
         ctx.lineJoin = "round";
         const pts = pointsRef.current[s];
+        const last = Math.max(1, Math.floor((pts.length - 1) * reveal));
         ctx.beginPath();
-        for (let i = 0; i < pts.length; i++) {
+        for (let i = 0; i <= last; i++) {
           const x = M.left + (i / (pts.length - 1)) * innerW;
           if (i === 0) ctx.moveTo(x, pts[i]);
           else ctx.lineTo(x, pts[i]);
@@ -117,6 +130,26 @@ export function CurvePreview(props: {selected: number; durationSeconds: number})
     const ro = new ResizeObserver(resize);
     ro.observe(canvas);
 
+    // Intro timeline (landing only): ruler 0–0.5s, then curve 1, 2, 3 each
+    // 0.5s — about two seconds, then it stops and stays still.
+    let introRaf = 0;
+    const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    if (props.intro && !reduced) {
+      const t0 = performance.now();
+      const tick = (t: number) => {
+        const el = (t - t0) / 1000;
+        rulerRevealRef.current = Math.min(1, el / 0.5);
+        const curveTime = Math.max(0, el - 0.5);
+        revealRef.current = [0, 1, 2].map((s) => Math.min(1, Math.max(0, curveTime - s * 0.5) / 0.5));
+        draw();
+        if (el < 2.2) introRaf = requestAnimationFrame(tick);
+      };
+      introRaf = requestAnimationFrame(tick);
+    } else if (props.intro) {
+      rulerRevealRef.current = 1;
+      revealRef.current = [1, 1, 1];
+    }
+
     const animate = () => {
       loopRef.current = 0;
       draw();
@@ -139,6 +172,7 @@ export function CurvePreview(props: {selected: number; durationSeconds: number})
     return () => {
       ro.disconnect();
       if (loopRef.current) cancelAnimationFrame(loopRef.current);
+      if (introRaf) cancelAnimationFrame(introRaf);
       loopRef.current = 0;
       springsRef.current?.forEach((sp) => sp.dispose());
       springsRef.current = null;
