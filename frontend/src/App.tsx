@@ -37,6 +37,7 @@ const CHAIN_ID = M.chainId;
 const KEEPER_URL = "http://localhost:8787";
 
 const ABI = parseAbi([
+  "function mint(address to,uint256 amount)",
   "function createPosition((address tokenIn,address tokenOut,uint256 totalBudget,uint256 minFillAmount,uint256 duration,uint8 curveShape,uint256 minPrice,uint256 maxPrice,uint16 maxSlippageBps) params,(address router,(address maker,uint256 traits,bytes data) order,bytes takerTraitsAndData) route)",
   "function approve(address spender,uint256 amount) returns (bool)",
 ]);
@@ -51,10 +52,12 @@ export default function App() {
   const {login} = useLogin();
   const {addSigners} = useSigners();
   const {wallets} = useWallets();
-  // The connected embedded wallet exposes an EIP-1193 provider (v3 API).
-  const wallet = wallets.find(
-    (w) => w.address.toLowerCase() === user?.wallet?.address.toLowerCase(),
-  ) ?? wallets[0];
+  // Prefer the PRIVY-MANAGED (embedded) wallet: delegation via session
+  // signers only controls Privy-managed keys. External wallets can browse
+  // but cannot be delegated.
+  const wallet =
+    wallets.find((w) => w.walletClientType === "privy") ?? wallets[0];
+  const isEmbedded = wallet?.walletClientType === "privy";
   const [status, setStatus] = useState<string>("");
   const [positionId, setPositionId] = useState<bigint | null>(null);
   const [delegated, setDelegated] = useState(false);
@@ -81,7 +84,20 @@ export default function App() {
 
   async function createDemoPosition() {
     try {
-      setStatus("1/3 approving dETH spend…");
+      setStatus("0/4 faucet: minting demo dETH to this wallet…");
+      const wc0 = await walletClient();
+      const [addr0] = await wc0.getAddresses();
+      await wc0.sendTransaction({
+        account: addr0 as `0x${string}`,
+        to: M.dETH,
+        data: encodeFunctionData({
+          abi: ABI,
+          functionName: "mint",
+          args: [addr0 as `0x${string}`, 10n * 10n ** 18n],
+        }),
+      });
+
+      setStatus("1/4 approving dETH spend…");
       const wc = await walletClient();
       const [address] = await wc.getAddresses();
       await wc.sendTransaction({
@@ -94,7 +110,7 @@ export default function App() {
         }),
       });
 
-      setStatus("2/3 creating position on-chain…");
+      setStatus("2/4 creating position on-chain…");
       const hash = await wc.sendTransaction({
         account: address,
         to: M.slopePosition,
@@ -126,11 +142,15 @@ export default function App() {
         }),
       });
       const receipt = await publicClient.waitForTransactionReceipt({hash});
-      const createdEvent = receipt.logs[0];
-      // positionId = first indexed topic after the event signature.
-      const id = BigInt((createdEvent.topics[1] as string));
+      // The approve log is on the dETH token; the PositionCreated log is the
+      // first (and only) log emitted by the SlopePosition contract itself.
+      const createdEvent = receipt.logs.find(
+        (l) => l.address.toLowerCase() === MANIFEST.slopePosition.toLowerCase(),
+      );
+      if (!createdEvent) throw new Error("PositionCreated event not found in receipt");
+      const id = BigInt(createdEvent.topics[1] as string);
       setPositionId(id);
-      setStatus(`3/3 position ${id} created (tx ${hash.slice(0, 10)}…)`);
+      setStatus(`3/4 position ${id} created (tx ${hash.slice(0, 10)}…)`);
     } catch (e: any) {
       setStatus(`error: ${e.shortMessage ?? e.message}`);
     }
@@ -190,9 +210,19 @@ export default function App() {
           <button onClick={createDemoPosition} disabled={positionId !== null}>
             {positionId !== null ? `position #${positionId} live` : "create demo position (10 dETH, NEUTRAL, 1000 s)"}
           </button>
-          <button onClick={delegate} disabled={positionId === null || delegated}>
+          <button
+            onClick={delegate}
+            disabled={positionId === null || delegated || !isEmbedded}
+            title={isEmbedded ? "" : "delegation requires the Privy embedded wallet — sign out and sign in with email"}
+          >
             {delegated ? "delegated to keeper ✓" : "delegate execution to keeper (scoped signer)"}
           </button>
+          {positionId !== null && !isEmbedded && (
+            <p className="muted">
+              this session uses an external wallet — delegation needs the embedded
+              wallet. sign out, then sign in with email to get one.
+            </p>
+          )}
           {delegated && (
             <p className="muted">
               keeper polls this position and fills within the schedule. scope: only

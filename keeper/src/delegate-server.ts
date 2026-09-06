@@ -13,6 +13,7 @@
  */
 import {serve} from "@hono/node-server";
 import {Hono} from "hono";
+import {cors} from "hono/cors";
 import {generateKeyPairSync} from "node:crypto";
 import {loadConfig, requireCredentials} from "./config.ts";
 import {createKeyQuorum, createPolicy, listDelegatedWallets} from "./privy-rest.ts";
@@ -24,6 +25,9 @@ const cfg = loadConfig();
 requireCredentials(cfg);
 
 const app = new Hono();
+
+// The frontend (localhost:5173) calls this endpoint cross-origin.
+app.use("*", cors());
 
 app.get("/health", (c) => c.json({ok: true}));
 
