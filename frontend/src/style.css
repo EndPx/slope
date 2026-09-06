@@ -88,19 +88,3 @@ main .link {
   color: #55637a;
   text-decoration: underline;
 }
-main .field {
-  display: block;
-  width: 100%;
-  box-sizing: border-box;
-  margin: 0.5rem 0;
-  padding: 0.7rem 1rem;
-  background: #0b0e11;
-  color: #e6e6e6;
-  border: 1px solid #2a3a4f;
-  border-radius: 8px;
-  font: inherit;
-}
-main .field:focus {
-  outline: none;
-  border-color: #19d17c;
-}
