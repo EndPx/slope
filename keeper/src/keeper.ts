@@ -23,6 +23,7 @@ import {PrivyClient} from "@privy-io/node";
 import {readFileSync} from "node:fs";
 import {loadConfig, requireCredentials} from "./config.ts";
 import {getEntry, loadKeystore} from "./keystore.ts";
+import {isDeterministicPrivyError as isDeterministic} from "./errors.ts";
 import {listDelegatedWallets} from "./privy-rest.ts";
 import {progress, Shape} from "../../shared/src/curve.ts";
 
@@ -156,6 +157,7 @@ async function tick(): Promise<void> {
   const store = loadKeystore();
   const jobs: Promise<void>[] = [];
   for (const positionId of Object.keys(store)) {
+    if (store[positionId].disabled) continue; // can never fill; reason logged at startup
     if (inFlight.has(positionId)) continue; // serialization per position
     const failuresBefore = failures.get(positionId) ?? 0;
     if (failuresBefore >= PARK_AFTER) continue; // parked: stop retrying
@@ -165,6 +167,11 @@ async function tick(): Promise<void> {
         return r;
       })
       .catch((e) => {
+        if (isDeterministic(e)) {
+          failures.set(positionId, PARK_AFTER);
+          console.error(`[${positionId}] PARKED (deterministic, no retry):`, String((e as Error)?.message ?? e).slice(0, 300));
+          return;
+        }
         const count = failuresBefore + 1;
         failures.set(positionId, count);
         console.error(`[${positionId}] error (${count}/${PARK_AFTER}):`, e.message ?? e);
@@ -178,6 +185,9 @@ async function tick(): Promise<void> {
 }
 
 console.log("keeper polling loop started");
+for (const [id, e] of Object.entries(loadKeystore())) {
+  if (e.disabled) console.warn(`[${id}] disabled: ${e.disabled}`);
+}
 for (;;) {
   await tick();
   await new Promise((r) => setTimeout(r, 15_000));
