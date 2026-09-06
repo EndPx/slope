@@ -248,6 +248,32 @@ main .linklike {
   cursor: pointer;
 }
 
+main table.log {
+  width: 100%;
+  border-collapse: collapse;
+  font: 400 0.78rem var(--font-num);
+  font-variant-numeric: tabular-nums;
+}
+main table.log th {
+  text-align: left;
+  color: var(--muted);
+  font: 600 0.7rem var(--font-ui);
+  padding: 0.4rem 0.6rem;
+  border-bottom: 1px solid var(--hairline);
+}
+main table.log td {
+  padding: 0.42rem 0.6rem;
+  border-bottom: 1px solid var(--hairline-soft);
+}
+main table.log th.r,
+main table.log td.r { text-align: right; }
+main table.log tr.held td { background: color-mix(in srgb, var(--amber) 5%, transparent); }
+main .held-head {
+  color: var(--amber);
+  font: 600 0.78rem var(--font-ui);
+}
+main .held-enum { color: var(--muted); font-size: 0.68rem; }
+
 @media (prefers-reduced-motion: reduce) {
   main * { transition: none !important; }
 }

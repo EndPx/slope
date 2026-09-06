@@ -7,6 +7,7 @@ import {useEffect, useState} from "react";
 import {useLogin, usePrivy} from "@privy-io/react-auth";
 import "./style.css";
 import {CreateScreen} from "./CreateScreen";
+import {ExecutionScreen} from "./ExecutionScreen";
 
 type Tab = "create" | "positions" | "performance";
 
@@ -68,17 +69,20 @@ export default function App() {
             <CreateScreen onCreated={(id) => setLivePositionId(id)} />
           </>
         )}
-        {tab === "positions" && (
-          <div className="empty">
-            <h2 className="display">No schedules yet</h2>
-            <p className="note" style={{marginTop: "0.5rem"}}>
-              Set how much and how fast — your schedules and every slice they execute will appear here.
-            </p>
-            <button className="act" style={{marginTop: "1.1rem", maxWidth: 260}} onClick={() => setTab("create")}>
-              Set a schedule
-            </button>
-          </div>
-        )}
+        {tab === "positions" &&
+          (livePositionId !== null ? (
+            <ExecutionScreen positionId={livePositionId} />
+          ) : (
+            <div className="empty">
+              <h2 className="display">No schedules yet</h2>
+              <p className="note" style={{marginTop: "0.5rem"}}>
+                Set how much and how fast — your schedules and every slice they execute will appear here.
+              </p>
+              <button className="act" style={{marginTop: "1.1rem", maxWidth: 260}} onClick={() => setTab("create")}>
+                Set a schedule
+              </button>
+            </div>
+          ))}
         {tab === "performance" && (
           <div className="empty">
             <h2 className="display">Performance appears after the first slice</h2>
