@@ -15,6 +15,13 @@ export function fmtPrice(raw18: bigint | null): string {
   return n.toLocaleString("en-US", {maximumFractionDigits: 2, minimumFractionDigits: 2});
 }
 
+/** Subgraph BigDecimal strings are plain decimals, not raw units. */
+export function fmtDecimal(value: string | null): string {
+  if (value === null) return "—";
+  const n = Number(value);
+  return n.toLocaleString("en-US", {maximumFractionDigits: 2, minimumFractionDigits: 2});
+}
+
 export function fmtBps(bps: string | null): string {
   if (bps === null) return "—";
   const n = Number(bps);

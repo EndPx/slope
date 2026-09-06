@@ -319,6 +319,58 @@ main .statusbar b {
 }
 main .statusbar b.warn { color: var(--amber); }
 
+main .bench {
+  border: 1px solid var(--hairline-soft);
+  background: var(--panel);
+  border-radius: 3px;
+  padding: 1rem 1.1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.7rem;
+}
+main .bench-row {
+  display: grid;
+  grid-template-columns: 84px 1fr 110px;
+  grid-template-rows: auto auto;
+  gap: 0.15rem 0.8rem;
+  align-items: center;
+  cursor: pointer;
+}
+main .bench-label { grid-column: 1; grid-row: 1; }
+main .bench-track {
+  position: relative;
+  height: 14px;
+  grid-column: 2;
+  grid-row: 1;
+  background: var(--ink);
+  border-radius: 2px;
+}
+main .bench-zero {
+  position: absolute;
+  top: -3px;
+  bottom: -3px;
+  width: 1px;
+  background: var(--hairline);
+}
+main .bench-bar {
+  position: absolute;
+  top: 2px;
+  bottom: 2px;
+  border-radius: 2px;
+}
+main .bench-num {
+  grid-column: 3;
+  grid-row: 1;
+  text-align: right;
+  color: var(--paper);
+}
+main .bench-meta {
+  grid-column: 2 / 4;
+  grid-row: 2;
+  color: var(--muted);
+  font: 400 0.72rem var(--font-ui);
+}
+
 @media (prefers-reduced-motion: reduce) {
   main * { transition: none !important; }
 }

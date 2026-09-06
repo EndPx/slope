@@ -14,6 +14,7 @@ import "./style.css";
 import {CreateScreen} from "./CreateScreen";
 import {PositionsScreen} from "./PositionsScreen";
 import {ExecutionScreen} from "./ExecutionScreen";
+import {PerformanceScreen} from "./PerformanceScreen";
 import {FaucetPanel} from "./FaucetPanel";
 import {fetchHeadBlock} from "./lib/subgraph";
 import MANIFEST from "./manifest.json";
@@ -72,6 +73,7 @@ export default function App() {
   const [livePositionId, setLivePositionId] = useState<bigint | null>(
     localStorage.getItem("positionId") ? BigInt(localStorage.getItem("positionId")!) : null,
   );
+  const [focusPosition, setFocusPosition] = useState<bigint | null>(null);
 
   if (!ready) {
     return (
@@ -143,17 +145,20 @@ export default function App() {
             <CreateScreen onCreated={(id) => setLivePositionId(id)} />
           </>
         )}
-        {tab === "positions" && <PositionsScreen initialSelected={livePositionId} onGoCreate={() => setTab("create")} />}
+        {tab === "positions" && (
+          <PositionsScreen
+            key={focusPosition?.toString() ?? "list"}
+            initialSelected={focusPosition ?? livePositionId}
+            onGoCreate={() => setTab("create")}
+          />
+        )}
         {tab === "performance" && (
-          <div className="empty">
-            <h2 className="display" style={{fontSize: "1.4rem"}}>
-              Performance grading lands with the next screen
-            </h2>
-            <p className="note" style={{marginTop: "0.5rem"}}>
-              Realized execution is graded against a plain linear schedule at the same observed prices — including the
-              cases where the curve loses.
-            </p>
-          </div>
+          <PerformanceScreen
+            onSelect={(id) => {
+              setFocusPosition(id);
+              setTab("positions");
+            }}
+          />
         )}
         {tab === "activity" && (
           <div className="empty">
