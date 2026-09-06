@@ -1,21 +1,33 @@
 /**
  * Keeper polling loop (run: pnpm --filter @slope/keeper keeper).
  *
- * For every delegated position in the keystore:
+ * Decision layer — LIVE SUBGRAPH DATA (track requirement): every tick starts
+ * with an API-key-authenticated query against the PINNED versioned Studio
+ * endpoint, which decides WHAT to work on: which active positions to tick,
+ * the indexed executedAmount as the due-increment basis (skip-not-due costs
+ * no RPC), and skip history for parking/diagnosis. There is NO fallback to
+ * local data — if the subgraph is unreachable the tick is skipped loudly.
+ *
+ * Execution layer — ON-CHAIN, always: before any transaction the position's
+ * authoritative state is read from the contract and the authorized amount
+ * recomputed from the shared curve model with the position's own shape (the
+ * SAME formula the contract enforces). Price, quotes, and slippage stay
+ * on-chain inside the contract; the subgraph's indexing lag makes it unfit
+ * as the final source of truth for financial decisions.
+ *
+ * Per candidate:
  *   1. read the on-chain position (authoritative state);
  *   2. skip if inactive or already executed;
- *   3. compute authorizedNow from the shared curve model — the SAME formula
- *      the contract enforces — and send it as maxAmountIn (the contract
- *      executes min(authorizedNow, maxAmountIn), so the keeper can only
- *      tighten, never exceed, the schedule);
- *   4. sign via Privy (eth_signTransaction — policy + aggregation evaluated
+ *   3. compute authorizedNow from the shared curve model and send it as
+ *      maxAmountIn (the contract executes min(authorizedNow, maxAmountIn),
+ *      so the keeper can only tighten, never exceed, the schedule);
+ *   4. sign via Privy (eth_signTransaction — the scoped policy is evaluated
  *      at signing) and self-broadcast the raw transaction;
  *   5. log executed/skipped with the on-chain skip reason; park positions
  *      with persistent failures.
  *
  * Serialization: one in-flight promise per OWNER WALLET — never two parallel
- * transactions from the same wallet (shared nonce sequence), and never two
- * parallel transactions for the same position.
+ * transactions from the same wallet (shared nonce sequence).
  */
 import {createPublicClient, decodeEventLog, encodeFunctionData, http, toHex} from "viem";
 import {baseSepolia} from "viem/chains";
@@ -25,6 +37,8 @@ import {loadConfig, requireCredentials} from "./config.ts";
 import {getEntry, loadKeystore, recordSign, disableEntry, KeystoreEntry} from "./keystore.ts";
 import {isDeterministicPrivyError as isDeterministic} from "./errors.ts";
 import {listDelegatedWallets, deleteAggregation} from "./privy-rest.ts";
+import {fetchSnapshot} from "./subgraph.ts";
+import {selectCandidates, type RankedCandidate} from "./candidates.ts";
 import {progress, Shape} from "../../shared/src/curve.ts";
 
 const cfg = loadConfig();
@@ -216,21 +230,23 @@ async function processPosition(positionId: string): Promise<void> {
   const entry = getEntry(positionId);
   if (!entry) return;
   const id = BigInt(positionId);
-  const [position] = await publicClient.readContract({
+  // Authoritative read — the subgraph pick is only a candidate; the final
+  // authorization is computed from THIS state, never from indexed data.
+  const res: unknown = await publicClient.readContract({
     address: cfg.slopePosition as `0x${string}`,
     abi: ABI,
     functionName: "getPosition",
     args: [id],
   });
+  const [position] = Array.isArray(res) ? (res as [any]) : [res];
   if (!position.isActive || position.executedAmount >= position.totalBudget) {
     await finalizePosition(positionId, position, entry);
     return;
   }
   const elapsed = BigInt(Math.floor(Date.now() / 1000)) - position.startTimestamp;
   const scheduleElapsed = elapsed > position.duration ? position.duration : elapsed;
-  // NEUTRAL only in this milestone's keeper; the shared model already covers
-  // all three shapes for step 5.
-  const progress_ = progress(scheduleElapsed, position.duration, Shape.NEUTRAL);
+  // The position's own shape (contract enum order matches the shared model).
+  const progress_ = progress(scheduleElapsed, position.duration, position.curveShape as Shape);
   const authorizedCumulative = (position.totalBudget * progress_) / 10n ** 18n;
   const authorizedNow = authorizedCumulative - position.executedAmount;
   if (authorizedNow <= 0n) {
@@ -246,40 +262,69 @@ async function processPosition(positionId: string): Promise<void> {
 }
 
 async function tick(): Promise<void> {
-  const store = loadKeystore();
+  // Decision layer: live subgraph snapshot. Fail-closed — no snapshot, no
+  // execution, and the reason is logged loudly. Never fall back to iterating
+  // the keystore: that would make the live-Graph-data claim false.
+  let snapshot;
+  try {
+    snapshot = await fetchSnapshot(cfg.graphApiKey, cfg.graphQueryUrl);
+  } catch (e) {
+    console.error("SUBGRAPH UNREACHABLE — no execution this tick (no fallback path):", String((e as Error)?.message ?? e).slice(0, 300));
+    return;
+  }
+
+  // Staleness report (SPEC section 5: indexing lag is why execution-critical
+  // state is re-verified on-chain; the warning quantifies it per tick).
+  const head = await publicClient.getBlockNumber();
+  const lag = head - snapshot.indexedBlock;
+  if (lag > 50n) {
+    console.warn(`subgraph lagging ${lag} blocks behind head — indexed data used for CANDIDACY only; on-chain verification closes the gap`);
+  }
+
+  const plan = selectCandidates({snapshot, keystore: loadKeystore(), nowSeconds: BigInt(Math.floor(Date.now() / 1000))});
+  for (const id of plan.notDelegated) console.log(`[${id}] active on-chain, not delegated to this keeper — skipping`);
+  for (const id of plan.notDue) console.log(`[${id}] NOT_DUE per subgraph (no RPC spent)`);
+  for (const park of plan.fastParks) {
+    disableEntry(park.positionId, `${park.note} at ${new Date().toISOString()}`);
+    console.error(`[${park.positionId}] PARKED (subgraph skip history): ${park.note}`);
+  }
+
   const jobs: Promise<void>[] = [];
-  for (const positionId of Object.keys(store)) {
-    const entry = store[positionId];
-    if (entry.disabled) continue; // can never fill; reason logged at startup
+  for (const candidate of plan.ranked) {
+    const failuresBefore = failures.get(candidate.positionId) ?? 0;
+    if (failuresBefore >= PARK_AFTER) continue; // parked this session
+    if (candidate.degraded) {
+      console.warn(`[${candidate.positionId}] DEGRADED priority: recent indexed skips are impact/bounds/quote — running last; review the route`);
+    }
     // Serialization per OWNER WALLET, not per position: positions sharing a
     // wallet share one nonce sequence (live: two parallel same-wallet fills
     // raced nonces and rejected each other with "replacement underpriced").
+    const entry = getEntry(candidate.positionId);
+    if (!entry) continue;
     const walletKey = entry.owner.toLowerCase();
     if (inFlight.has(walletKey)) continue;
-    const failuresBefore = failures.get(positionId) ?? 0;
-    if (failuresBefore >= PARK_AFTER) continue; // parked: stop retrying
-    const job = processPosition(positionId)
+    const job = processPosition(candidate.positionId)
       .then((r) => {
-        failures.delete(positionId);
+        failures.delete(candidate.positionId);
         return r;
       })
       .catch((e) => {
         if (e instanceof FillSkippedError && e.reason === "TRANSFER_FAILED") {
           // Deterministic: only an owner-side action (tokenIn balance +
           // approval) can change it — the keeper is scoped out of both.
-          failures.set(positionId, PARK_AFTER);
-          console.error(`[${positionId}] PARKED (TRANSFER_FAILED): owner wallet needs tokenIn balance + approval — fund/approve from the frontend, then restart the keeper`);
+          failures.set(candidate.positionId, PARK_AFTER);
+          console.error(`[${candidate.positionId}] PARKED (TRANSFER_FAILED): owner wallet needs tokenIn balance + approval — fund/approve from the frontend, then restart the keeper`);
           return;
         }
         if (isDeterministic(e)) {
-          failures.set(positionId, PARK_AFTER);
-          console.error(`[${positionId}] PARKED (deterministic, no retry):`, String((e as Error)?.message ?? e).slice(0, 300));
+          failures.set(candidate.positionId, PARK_AFTER);
+          console.error(`[${candidate.positionId}] PARKED (deterministic, no retry):`, String((e as Error)?.message ?? e).slice(0, 300));
           return;
         }
         const count = failuresBefore + 1;
-        failures.set(positionId, count);
-        console.error(`[${positionId}] error (${count}/${PARK_AFTER}):`, e.message ?? e);
-        if (count >= PARK_AFTER) console.warn(`[${positionId}] PARKED — fix the cause and restart the keeper`);
+        failures.set(candidate.positionId, count);
+        console.error(`[${candidate.positionId}] error (${count}/${PARK_AFTER}):`, e.message ?? e);
+        if (count >= PARK_AFTER) console.warn(`[${candidate.positionId}] PARKED — fix the cause and restart the keeper`);
       })
       .finally(() => inFlight.delete(walletKey));
     inFlight.set(walletKey, job);
@@ -289,6 +334,10 @@ async function tick(): Promise<void> {
 }
 
 console.log("keeper polling loop started");
+console.log(`subgraph: ${cfg.graphQueryUrl} (versioned, API-key-authenticated)`);
+if (!cfg.graphApiKey) {
+  throw new Error("GRAPH_API_KEY missing — the keeper consumes live subgraph data for candidate selection; no fallback path exists. Set it in the gitignored .env.");
+}
 for (const [id, e] of Object.entries(loadKeystore())) {
   if (e.disabled) console.warn(`[${id}] disabled: ${e.disabled}`);
 }
