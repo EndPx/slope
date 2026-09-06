@@ -143,13 +143,17 @@ export function buildPositionPolicy(params: {
             field_source: "ethereum_calldata",
             field: "adaptiveExecute.maxAmountIn",
             operator: "lte",
-            value: hex(params.budgetRaw),
+            // Decoded calldata args are compared against DECIMAL strings
+            // (the conditional-signer doc example uses parseUnits().toString());
+            // a hex string here denied every request in live testing.
+            value: params.budgetRaw.toString(),
             abi: ADAPTIVE_EXECUTE_ABI,
           },
           {
             field_source: "reference",
             field: `aggregation.${params.aggregationId}`,
             operator: "lte",
+            // Aggregation reference caps use hex per the docs recipe.
             value: hex(params.aggregationCapRaw),
           },
           {

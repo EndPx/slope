@@ -44,7 +44,7 @@ export function loadConfig(): KeeperConfig {
     // REVISION 1 Caveat 1: skipped fills still consume aggregation headroom,
     // and the app-wide aggregation is shared across positions — cap at
     // 2.5x a single 10e18 budget instead of a tight value.
-    aggregationCapRaw: 25_000_000_000_000_000_000n, // 25 tokens (raw)
+    aggregationCapRaw: 100_000_000_000_000_000_000n, // 100 tokens raw: 10x headroom — denied attempts still consume the sum
     settlementBufferSeconds: 86_400n, // one day past the window for terminal settles
   };
 }

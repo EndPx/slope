@@ -70,8 +70,8 @@ describe("position policy", () => {
     const conditions = policy.rules[0].conditions;
     const cap = conditions.find((c: any) => c.field === "adaptiveExecute.maxAmountIn");
     expect(cap.operator).toBe("lte");
-    // 10 tokens raw = 10e18 = 0x8AC7230489E80000
-    expect(cap.value).toBe("0x8ac7230489e80000");
+    // Decoded calldata caps are DECIMAL strings (live-tested: hex denied all)
+    expect(cap.value).toBe("10000000000000000000");
     expect(cap.abi).toEqual(ADAPTIVE_EXECUTE_ABI);
   });
 

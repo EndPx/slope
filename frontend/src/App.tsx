@@ -142,7 +142,7 @@ export default function App() {
                 traits: AQUA_ORDER_TRAITS,
                 data: SEED_PROGRAM as `0x${string}`,
               },
-              takerTraitsAndData: "0x000000000000000000000000000000000000000041",
+              takerTraitsAndData: "0x00000000000000000000000000000000000000000041", // 22-byte header: zero offsets + flags 0x0041
             },
           ],
         }),
