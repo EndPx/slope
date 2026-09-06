@@ -10,10 +10,15 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
       appId={import.meta.env.VITE_PRIVY_APP_ID as string}
       config={{
         // Embedded wallet on login is the PRIMARY path (Best Financial Flow
-        // requirement): email/social login, no seed phrase, wallet provisioned
-        // automatically. External wallets are an additional option only.
+        // requirement): email login, no seed phrase, wallet provisioned
+        // automatically. External-wallet login is disabled for the demo:
+        // Privy session signers only control Privy-managed wallets, so an
+        // external wallet is a dead end for delegation.
+        loginMethods: ["email"],
         embeddedWallets: {
-          ethereum: {createOnLogin: "users-without-wallets"},
+          // 'all-users': every account gets an embedded wallet, so every
+          // position can be delegated to the keeper.
+          ethereum: {createOnLogin: "all-users"},
         },
         appearance: {theme: "dark"},
         supportedChains: [baseSepolia],
