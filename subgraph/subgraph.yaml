@@ -1,0 +1,43 @@
+specVersion: 0.0.5
+description: >-
+  Slope — time-distributed taker execution on 1inch Aqua/SwapVM. Indexes
+  SlopePosition lifecycle events (positions, fills with the impactChecked
+  flag, skips with reasons) and stores the as-of-last-fill linear-TWAP
+  benchmark snapshot computed in the mapping (MATH_SPEC section 6,
+  DECISION 4). Address and startBlock are sourced from
+  contracts/deployments/base-sepolia.json.
+repository: https://github.com/EndPx/slope
+schema:
+  file: ./schema.graphql
+dataSources:
+  - kind: ethereum
+    name: SlopePosition
+    network: base-sepolia
+    source:
+      address: "0xC7c6FaD1C2A0e8961E34D40c39C059ECE6dBB8Cc"
+      abi: SlopePosition
+      startBlock: 46418713
+    mapping:
+      kind: ethereum/events
+      apiVersion: 0.0.9
+      language: wasm/assemblyscript
+      entities:
+        - Position
+        - Fill
+        - Skip
+        - BenchmarkComparison
+      abis:
+        - name: SlopePosition
+          file: ./abis/SlopePosition.json
+      eventHandlers:
+        - event: PositionCreated(indexed uint256,indexed address,address,address,uint8,uint8,uint256,uint256,uint256,uint8,uint256,uint256,uint16)
+          handler: handlePositionCreated
+        - event: PositionCancelled(indexed uint256)
+          handler: handlePositionCancelled
+        - event: FillExecuted(indexed uint256,uint256,uint256,uint256,uint256,bool)
+          handler: handleFillExecuted
+        - event: PositionSkipped(indexed uint256,uint8)
+          handler: handlePositionSkipped
+        - event: PositionCompleted(indexed uint256)
+          handler: handlePositionCompleted
+      file: ./src/mapping.ts

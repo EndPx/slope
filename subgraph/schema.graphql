@@ -1,0 +1,95 @@
+# Slope subgraph — Base Sepolia
+#
+# Normative sources: SPEC.md section 6 (entities), MATH_SPEC.md section 6
+# (benchmark mathematics), DECISION 4 (as-of-last-fill snapshot; the live
+# planned-vs-actual curves are computed in the FRONTEND from Position +
+# Fill records — mappings only run on events, there is no "now").
+
+type Position @entity(immutable: false) {
+  "positionId as a decimal string"
+  id: ID!
+  owner: Bytes!
+  tokenIn: Bytes!
+  tokenOut: Bytes!
+  decimalsIn: Int!
+  decimalsOut: Int!
+  totalBudget: BigInt!
+  minFillAmount: BigInt!
+  "0 AGGRESSIVE, 1 NEUTRAL, 2 CONSERVATIVE"
+  curveShape: Int!
+  "block timestamp of the creation transaction (the event carries no start time)"
+  startTimestamp: BigInt!
+  duration: BigInt!
+  minPrice: BigInt!
+  maxPrice: BigInt!
+  maxSlippageBps: Int!
+  isActive: Boolean!
+  "advances by amountIn with every Fill"
+  executedAmount: BigInt!
+  fills: [Fill!]! @derivedFrom(field: "position")
+  skips: [Skip!]! @derivedFrom(field: "position")
+  benchmark: BenchmarkComparison @derivedFrom(field: "position")
+}
+
+type Fill @entity(immutable: true) {
+  "<tx hash>-<log index>"
+  id: ID!
+  position: Position!
+  amountIn: BigInt!
+  amountOut: BigInt!
+  "18-decimal normalized tokenOut per tokenIn, computed by the contract (DECISION 10)"
+  executionPrice: BigInt!
+  timestamp: BigInt!
+  "REVISION 3: false when the fill is below the probe floor — its price impact was NOT measured"
+  impactChecked: Boolean!
+  blockNumber: BigInt!
+  txHash: Bytes!
+}
+
+type Skip @entity(immutable: true) {
+  "<tx hash>-<log index>"
+  id: ID!
+  position: Position!
+  reason: SkipReason!
+  timestamp: BigInt!
+  blockNumber: BigInt!
+  txHash: Bytes!
+}
+
+"Mirrors the on-chain SkipReason enum order"
+enum SkipReason {
+  NOT_DUE
+  MIN_FILL
+  BOUNDS
+  IMPACT
+  QUOTE_INVALID
+  TRANSFER_FAILED
+}
+
+"""
+As-of-last-fill benchmark snapshot (DECISION 4): realized execution versus
+the NEUTRAL shape at the same observed fill prices — this isolates the
+size-and-timing distribution from the price path (MATH_SPEC section 6).
+"""
+type BenchmarkComparison @entity(immutable: false) {
+  "positionId"
+  id: ID!
+  position: Position!
+  fillCount: Int!
+  elapsedAtLastFill: BigInt!
+  "what the NEUTRAL schedule would have executed by elapsedAtLastFill"
+  plannedExecuted: BigDecimal!
+  actualExecuted: BigDecimal!
+  actualVWAP: BigDecimal!
+  "null while the NEUTRAL schedule total is still zero at every fill instant"
+  twapVWAP: BigDecimal
+  "sell side: (actualVWAP - twapVWAP) * 10000 / twapVWAP; positive = the curve out-executed linear TWAP at the same observed prices"
+  improvementBps: BigDecimal
+  computedAt: BigInt!
+
+  # Running weighted sums behind the snapshot (mapping internals):
+  actualPriceSum: BigDecimal!
+  actualAmountSum: BigDecimal!
+  twapPriceSum: BigDecimal!
+  twapAmountSum: BigDecimal!
+}

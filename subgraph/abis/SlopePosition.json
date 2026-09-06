@@ -1,0 +1,60 @@
+[
+  {
+    "anonymous": false,
+    "inputs": [
+      { "indexed": true, "internalType": "uint256", "name": "positionId", "type": "uint256" },
+      { "indexed": true, "internalType": "address", "name": "owner", "type": "address" },
+      { "indexed": false, "internalType": "address", "name": "tokenIn", "type": "address" },
+      { "indexed": false, "internalType": "address", "name": "tokenOut", "type": "address" },
+      { "indexed": false, "internalType": "uint8", "name": "decimalsIn", "type": "uint8" },
+      { "indexed": false, "internalType": "uint8", "name": "decimalsOut", "type": "uint8" },
+      { "indexed": false, "internalType": "uint256", "name": "totalBudget", "type": "uint256" },
+      { "indexed": false, "internalType": "uint256", "name": "minFillAmount", "type": "uint256" },
+      { "indexed": false, "internalType": "uint256", "name": "duration", "type": "uint256" },
+      { "indexed": false, "internalType": "uint8", "name": "curveShape", "type": "uint8" },
+      { "indexed": false, "internalType": "uint256", "name": "minPrice", "type": "uint256" },
+      { "indexed": false, "internalType": "uint256", "name": "maxPrice", "type": "uint256" },
+      { "indexed": false, "internalType": "uint16", "name": "maxSlippageBps", "type": "uint16" }
+    ],
+    "name": "PositionCreated",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      { "indexed": true, "internalType": "uint256", "name": "positionId", "type": "uint256" }
+    ],
+    "name": "PositionCancelled",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      { "indexed": true, "internalType": "uint256", "name": "positionId", "type": "uint256" },
+      { "indexed": false, "internalType": "uint256", "name": "amountIn", "type": "uint256" },
+      { "indexed": false, "internalType": "uint256", "name": "amountOut", "type": "uint256" },
+      { "indexed": false, "internalType": "uint256", "name": "executionPrice", "type": "uint256" },
+      { "indexed": false, "internalType": "uint256", "name": "timestamp", "type": "uint256" },
+      { "indexed": false, "internalType": "bool", "name": "impactChecked", "type": "bool" }
+    ],
+    "name": "FillExecuted",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      { "indexed": true, "internalType": "uint256", "name": "positionId", "type": "uint256" },
+      { "indexed": false, "internalType": "uint8", "name": "reason", "type": "uint8" }
+    ],
+    "name": "PositionSkipped",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      { "indexed": true, "internalType": "uint256", "name": "positionId", "type": "uint256" }
+    ],
+    "name": "PositionCompleted",
+    "type": "event"
+  }
+]

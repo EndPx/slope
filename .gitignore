@@ -36,6 +36,12 @@ broadcast/
 dist/
 
 # ---------------------------------------------------------------------------
+# Subgraph — generated types and compiled build output
+# ---------------------------------------------------------------------------
+subgraph/generated/
+subgraph/build/
+
+# ---------------------------------------------------------------------------
 # OS / editor junk
 # ---------------------------------------------------------------------------
 .DS_Store
@@ -49,3 +55,4 @@ keeper/keys/
 *.pem
 keeper/.privy-aggregation-id
 delegate-server.log
+keeper-loop.log
