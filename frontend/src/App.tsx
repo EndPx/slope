@@ -230,6 +230,18 @@ export default function App() {
               wallet. sign out, then sign in with email to get one.
             </p>
           )}
+          {positionId !== null && (
+            <button
+              onClick={() => {
+                localStorage.removeItem("positionId");
+                setPositionId(null);
+                setDelegated(false);
+                setStatus("ready for a new position");
+              }}
+            >
+              + start another position
+            </button>
+          )}
           {delegated && (
             <p className="muted">
               keeper polls this position and fills within the schedule. scope: only
