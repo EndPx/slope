@@ -19,6 +19,7 @@ This repository was initialized from an empty GitHub repository on **5 September
 - **Privy embedded-wallet onboarding + bounded delegation**: a user onboards with email (no seed phrase), creates a position in one flow, and delegates execution with explicit frontend consent. Each position gets its own P-256 authorization key registered as a 1-of-1 key quorum — per-position key isolation.
 - **Scope enforced by Privy at signing time**: one per-position policy allows exactly one thing — `adaptiveExecute` calls to the `SlopePosition` contract, bound to that signer's **own** `positionId`, with a per-transaction input cap and an expiry. Everything else the wallet could do is implicitly denied. Budget and schedule are enforced by the contract itself: the delegated signer can only ever tighten what the curve authorizes, never exceed it (`executedAmount <= totalBudget` is the on-chain invariant).
 - **Keeper service**: reads positions on-chain, recomputes the curve-authorized increment from the shared reference model, requests the signature through Privy, and self-broadcasts the raw transaction. Deterministic failures (policy denials, authorization-signature failures, skipped fills) park the position on the first occurrence instead of retrying.
+- **Indexed by The Graph on Subgraph Studio** (Base Sepolia, `startBlock 46418713`): positions, fills (with the `impactChecked` flag), skips with reasons, and the as-of-last-fill linear-TWAP benchmark snapshot computed in the mapping. Versioned query endpoint pinned in [`docs/SUBGRAPH.md`](docs/SUBGRAPH.md). Verified live: position #10 fully settled through **57 delegated fills** and indexed with benchmark `+33.62 bps` versus linear TWAP at the same observed prices.
 - **Live end-to-end proof**: position **#8 fully settled through the delegated path** (three on-chain fills, `PositionCompleted` emitted, the session key's aggregation window recycled afterwards), position **#10 filling through the same path**, and a `TRANSFER_FAILED` skip parking the keeper with an actionable owner-side message — the skip-not-revert design holding up live.
 
 Currently committed docs:
@@ -34,7 +35,7 @@ Currently committed docs:
 - [`docs/MATH_SPEC.md`](docs/MATH_SPEC.md) — the normative mathematical kernel: units, the integer arithmetic contract, the progress schedule with exactness proofs, authorized amounts, price normalization and dual-quote impact, benchmark definitions, reference-model parity, numerical safety, and required mathematical tests.
 - `.gitignore` — repository hygiene from the first commit.
 
-Not yet implemented (the implementation order is fixed in SPEC.md, section 9): the **subgraph**, the full three-screen **frontend** experience, and the hosted **public demo**. This Status section and the docs index below are updated at major milestones.
+Not yet implemented (the implementation order is fixed in SPEC.md, section 9): the full three-screen **frontend** experience and the hosted **public demo**. This Status section and the docs index below are updated at major milestones.
 
 ## Live Demo
 
