@@ -274,6 +274,22 @@ main .held-head {
 }
 main .held-enum { color: var(--muted); font-size: 0.68rem; }
 
+main .faucet {
+  position: absolute;
+  top: calc(100% + 0.5rem);
+  right: 0;
+  width: 340px;
+  background: var(--panel);
+  border: 1px solid var(--hairline);
+  border-radius: 3px;
+  padding: 0.9rem 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  z-index: 30;
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.45);
+}
+
 @media (prefers-reduced-motion: reduce) {
   main * { transition: none !important; }
 }

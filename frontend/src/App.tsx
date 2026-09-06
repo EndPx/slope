@@ -4,17 +4,21 @@
  * (implementation order: one screen per review round).
  */
 import {useEffect, useState} from "react";
-import {useLogin, usePrivy} from "@privy-io/react-auth";
+import {useLogin, usePrivy, useWallets} from "@privy-io/react-auth";
 import "./style.css";
 import {CreateScreen} from "./CreateScreen";
 import {ExecutionScreen} from "./ExecutionScreen";
+import {FaucetPanel} from "./FaucetPanel";
 
 type Tab = "create" | "positions" | "performance";
 
 export default function App() {
   const {ready, logout} = usePrivy();
   const {login} = useLogin();
+  const {wallets} = useWallets();
+  const wallet = wallets.find((w) => w.walletClientType === "privy") ?? wallets[0];
   const [tab, setTab] = useState<Tab>("create");
+  const [showFaucet, setShowFaucet] = useState(false);
   const [livePositionId, setLivePositionId] = useState<bigint | null>(
     localStorage.getItem("positionId") ? BigInt(localStorage.getItem("positionId")!) : null,
   );
@@ -53,9 +57,32 @@ export default function App() {
             </button>
           ))}
         </nav>
-        <button className="linklike" onClick={() => logout()}>
-          sign out
-        </button>
+        <span style={{marginLeft: "auto"}} />
+        {wallet && (
+          <span style={{position: "relative"}}>
+            <button className="linklike" onClick={() => setShowFaucet((v) => !v)}>
+              faucet
+            </button>
+            {showFaucet && <FaucetPanel onClose={() => setShowFaucet(false)} />}
+          </span>
+        )}
+        <a className="linklike" href="https://github.com/EndPx/slope" target="_blank" rel="noreferrer">
+          docs
+        </a>
+        {wallet ? (
+          <>
+            <span className="note num" style={{margin: 0}}>
+              {wallet.address.slice(0, 6)}…{wallet.address.slice(-4)}
+            </span>
+            <button className="linklike" onClick={() => logout()}>
+              sign out
+            </button>
+          </>
+        ) : (
+          <button className="act" style={{padding: "0.3rem 0.8rem", width: "auto"}} onClick={() => login({})}>
+            sign in
+          </button>
+        )}
       </header>
 
       <div className="work">

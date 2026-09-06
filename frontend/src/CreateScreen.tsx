@@ -10,6 +10,10 @@ import {createWalletClient, custom, encodeFunctionData, formatUnits, http, parse
 import {baseSepolia} from "viem/chains";
 import MANIFEST from "./manifest.json";
 import {CurvePreview, SHAPE_COLOR, SHAPE_NAME} from "./CurvePreview";
+import {useCustody} from "./lib/useCustody";
+import {estimateSchedule} from "./lib/schedule-estimate";
+import {fmtToken} from "./lib/format";
+import type {Shape} from "./lib/curve";
 
 const M = MANIFEST as {
   slopePosition: `0x${string}`;
@@ -61,10 +65,7 @@ export function CreateScreen(props: {onCreated: (id: bigint) => void}) {
   // Custody preview: the contract pulls each slice from the wallet, so both
   // inventory and allowance decide whether execution can even start. Live
   // read, polled — the same facts a stale approval turns into TRANSFER_FAILED.
-  const [custody, setCustody] = useState<{balance: bigint | null; allowance: bigint | null}>({
-    balance: null,
-    allowance: null,
-  });
+  const custody = useCustody(wallet?.address);
 
   const budget = useMemo(() => {
     try {
@@ -96,29 +97,12 @@ export function CreateScreen(props: {onCreated: (id: bigint) => void}) {
 
   const railsInvalid = floorRaw !== 0n && ceilingRaw !== 0n && floorRaw >= ceilingRaw;
   const inputsValid = budget > 0n && floorRaw > 0n && ceilingRaw > 0n && slippageBps > 0 && !railsInvalid;
-
-  useEffect(() => {
-    if (!wallet) return;
-    let stop = false;
-    const read = async () => {
-      try {
-        const [balance, allowance] = await Promise.all([
-          publicClient.readContract({address: M.dETH, abi: ABI, functionName: "balanceOf", args: [wallet.address as `0x${string}`]}),
-          publicClient.readContract({address: M.dETH, abi: ABI, functionName: "allowance", args: [wallet.address as `0x${string}`, M.slopePosition]}),
-        ]);
-        if (!stop) setCustody({balance, allowance});
-      } catch {
-        /* rpc hiccup — keep the last reading */
-      }
-    };
-    read();
-    const t = setInterval(read, 12_000);
-    return () => {
-      stop = true;
-      clearInterval(t);
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [wallet?.address, budget]);
+  // Derived schedule numbers — what this pace means in practice, computed
+  // from the form parameters and the shared curve model. No chain touched.
+  const estimate = useMemo(
+    () => estimateSchedule(budget, BigInt(duration.seconds), pace as Shape, minFill),
+    [budget, duration.seconds, pace, minFill],
+  );
 
   const walletClient = async () => {
     const eth = (await wallet!.getEthereumProvider()) as any;
@@ -354,6 +338,12 @@ export function CreateScreen(props: {onCreated: (id: bigint) => void}) {
           Your pace, on one ruler — {SHAPE_NAME[pace]} is bold
         </p>
         <CurvePreview selected={pace} durationSeconds={duration.seconds} />
+        {estimate.slices > 0 && (
+          <p className="note num">
+            ≈ {estimate.slices} slices, about {fmtToken(estimate.avgSliceRaw, 18, 3)} dETH each, every ~
+            {estimate.intervalSeconds ?? duration.seconds}s
+          </p>
+        )}
         <p className="note">
           % of your budget spent as the window runs. Front-loaded goes early, even leaves steadily, held-back catches up
           late. Every slice is guarded by your rails and impact limit.
