@@ -14,6 +14,13 @@ This repository was initialized from an empty GitHub repository on **5 September
 - **Tests**: 67 Foundry tests green (curve boundaries exact to the wei, monotonicity/range fuzz across all three shapes, full skip matrix, lifecycle completion, base-mainnet fork validation against the official router) plus 18 TypeScript reference-model tests, with 96 committed cross-validation vectors matching Solidity bit-for-bit.
 - Addresses, deployment transaction hashes, source provenance, and the runbook: [`deployments/base-sepolia.json`](contracts/deployments/base-sepolia.json) + [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md).
 
+### Implemented — delegated execution is live (Privy + keeper)
+
+- **Privy embedded-wallet onboarding + bounded delegation**: a user onboards with email (no seed phrase), creates a position in one flow, and delegates execution with explicit frontend consent. Each position gets its own P-256 authorization key registered as a 1-of-1 key quorum — per-position key isolation.
+- **Scope enforced by Privy at signing time**: one per-position policy allows exactly one thing — `adaptiveExecute` calls to the `SlopePosition` contract, bound to that signer's **own** `positionId`, with a per-transaction input cap and an expiry. Everything else the wallet could do is implicitly denied. Budget and schedule are enforced by the contract itself: the delegated signer can only ever tighten what the curve authorizes, never exceed it (`executedAmount <= totalBudget` is the on-chain invariant).
+- **Keeper service**: reads positions on-chain, recomputes the curve-authorized increment from the shared reference model, requests the signature through Privy, and self-broadcasts the raw transaction. Deterministic failures (policy denials, authorization-signature failures, skipped fills) park the position on the first occurrence instead of retrying.
+- **Live end-to-end proof**: position **#8 fully settled through the delegated path** (three on-chain fills, `PositionCompleted` emitted, the session key's aggregation window recycled afterwards), position **#10 filling through the same path**, and a `TRANSFER_FAILED` skip parking the keeper with an actionable owner-side message — the skip-not-revert design holding up live.
+
 Currently committed docs:
 
 - [`docs/spec/SPEC.md`](docs/spec/SPEC.md) — the complete product and protocol specification: hard hackathon rules, the locked tech stack, the detailed project spec (position mechanics, curve formulas, execution flow, subgraph schema, UI screens, testing standard, priority order), a numbered CHANGELOG (Revision 1: `maxAmountIn` on `AdaptiveExecute`; Revision 2: pull-per-fill custody, `minFillAmount`, dual-quote price impact, decimal normalization, terminal clamp, permissionless execution), a Decision Log, and verified implementation notes.
@@ -27,7 +34,7 @@ Currently committed docs:
 - [`docs/MATH_SPEC.md`](docs/MATH_SPEC.md) — the normative mathematical kernel: units, the integer arithmetic contract, the progress schedule with exactness proofs, authorized amounts, price normalization and dual-quote impact, benchmark definitions, reference-model parity, numerical safety, and required mathematical tests.
 - `.gitignore` — repository hygiene from the first commit.
 
-Not yet implemented (the implementation order is fixed in SPEC.md, section 9): **Privy integration** (embedded-wallet onboarding, session signer + policy), the **keeper service**, the **subgraph**, the **frontend**, and the hosted **public demo**. This Status section and the docs index below are updated at major milestones.
+Not yet implemented (the implementation order is fixed in SPEC.md, section 9): the **subgraph**, the full three-screen **frontend** experience, and the hosted **public demo**. This Status section and the docs index below are updated at major milestones.
 
 ## Live Demo
 
@@ -45,6 +52,7 @@ Will be linked here once deployed — application, subgraph, and hosted endpoint
 - [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md) — the deployment/seed/verification runbook with the live addresses, provenance, and on-chain evidence.
 - `docs/DEMO_VIDEO_SCRIPT.md` — the submission recording sequence *(added before recording)*.
 - [`prompts/`](prompts/README.md) — the material AI-assisted specifications and prompts: the initial handoff, each implementation-step directive, and every human review that produced a numbered design revision — committed chronologically per the ETHGlobal transparency requirement.
+- [`FEEDBACK-PRIVY.md`](FEEDBACK-PRIVY.md) — our builder feedback for the Privy track, from deep production usage of conditional signers, key quorums, and the policy engine during this hackathon.
 
 ## Planned Workspace
 
@@ -76,7 +84,7 @@ This project is built spec-driven with AI assistance, per the ETHGlobal Online r
 ## Partner Integrations
 
 - **1inch Aqua / SwapVM** — settlement of every fill through the official shared-liquidity layer and its bytecode strategy engine. Slope self-deploys the official contracts (tag `v1.0.2`) to Base Sepolia, a redeployment path the prize explicitly allows, and settles through it on-chain.
-- **Privy** — embedded-wallet onboarding (email/social, no seed phrase) and bounded delegation: a scoped session signer whose policy (target allowlist, per-transaction cap, rolling spend limit, expiry) is evaluated by Privy's infrastructure at signing time.
+- **Privy** — embedded-wallet onboarding (email/social, no seed phrase) and bounded delegation: a scoped per-position session signer whose policy — target-contract allowlist, the single permitted function, binding to the signer's own `positionId`, a per-transaction input cap, and an expiry — is evaluated by Privy's infrastructure at signing time. Privy enforces the **scope** of delegated authority; the **budget and schedule** are enforced by the contract (the `executedAmount <= totalBudget` invariant and the curve), so delegation can only tighten, never loosen, what the position allows.
 - **The Graph** — a Subgraph Studio deployment on Base Sepolia indexing positions and fills; the keeper consumes this live, API-key-authenticated data to rank routes and decide execution windows, and the dashboard benchmarks realized execution against the linear-TWAP baseline.
 
 ## Security
