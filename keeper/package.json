@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "test": "vitest run",
-    "setup": "tsx src/setup.ts",
+    "patch-aggregations": "tsx src/patch-aggregations.ts",
     "delegate": "tsx src/delegate-server.ts",
     "keeper": "tsx src/keeper.ts",
     "list-delegated": "tsx src/list-delegated.ts"
