@@ -14,7 +14,7 @@
 import {serve} from "@hono/node-server";
 import {Hono} from "hono";
 import {cors} from "hono/cors";
-import {generateKeyPairSync} from "node:crypto";
+import {generateP256KeyPair} from "@privy-io/node";
 import {loadConfig, requireCredentials} from "./config.ts";
 import {createKeyQuorum, createPolicy, listDelegatedWallets} from "./privy-rest.ts";
 import {buildPositionPolicy} from "./policy-template.ts";
@@ -56,16 +56,11 @@ app.post("/delegate", async (c) => {
     return c.json({error: "budgetRaw and expirySeconds must be positive"}, 400);
   }
 
-  // Per-position P-256 authorization key (Privy never sees the private key).
-  const {publicKey, privateKey} = generateKeyPairSync("ec", {namedCurve: "prime256v1"});
-  const publicKeyPem = publicKey.export({type: "spki", format: "pem"}).toString();
-  const privateKeyPem = privateKey.export({type: "pkcs8", format: "pem"}).toString();
+  // Per-position P-256 authorization key in Privy's native format
+  // (base64 SPKI/PKCS8, no PEM headers). Privy never sees the private key.
+  const keypair = await generateP256KeyPair();
 
-  const quorum = await createKeyQuorum(
-    cfg,
-    publicKeyPem,
-    `Slope position ${positionId} (owner ${body.owner.slice(0, 10)}…)`,
-  );
+  const quorum = await createKeyQuorum(cfg, keypair.publicKey);
 
   const policy = buildPositionPolicy({
     positionId,
@@ -81,8 +76,8 @@ app.post("/delegate", async (c) => {
   putEntry({
     positionId: positionId.toString(),
     owner: body.owner,
-    privateKeyPem,
-    publicKeyPem,
+    privateKeyB64: keypair.privateKey,
+    publicKeyB64: keypair.publicKey,
     keyQuorumId: quorum.id,
     policyId: created.id,
     createdAt: new Date().toISOString(),

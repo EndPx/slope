@@ -57,16 +57,18 @@ export interface KeyQuorum {
 
 export function createKeyQuorum(
   cfg: PrivyRestConfig,
-  publicKeyPem: string,
-  name: string,
+  publicKeyB64Spki: string,
 ): Promise<KeyQuorum> {
   // 1-of-1 quorum: this single authorization key signs API requests on
-  // behalf of the app for wallets it is registered on as a signer.
+  // behalf of the app for wallets it is registered on as a signer. The key
+  // format is base64-encoded SPKI with no PEM headers (the SDK's own
+  // P256KeyPair.publicKey format).
   return post<KeyQuorum>(cfg, "/key_quorums", {
-    public_keys: [publicKeyPem.trim()],
+    public_keys: [publicKeyB64Spki.trim()],
     authorization_threshold: 1,
   });
 }
+
 
 export function createPolicy(cfg: PrivyRestConfig, policy: object): Promise<{id: string}> {
   return post<{id: string}>(cfg, "/policies", policy);

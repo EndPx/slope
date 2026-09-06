@@ -12,8 +12,8 @@ const PATH = ".keystore.json";
 export interface KeystoreEntry {
   positionId: string;
   owner: string;
-  privateKeyPem: string;
-  publicKeyPem: string;
+  privateKeyB64: string;
+  publicKeyB64: string;
   keyQuorumId: string;
   policyId: string;
   createdAt: string;

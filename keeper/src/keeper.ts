@@ -147,7 +147,7 @@ async function processPosition(positionId: string): Promise<void> {
     return;
   }
   console.log(`[${positionId}] executing fill up to ${authorizedNow}`);
-  await signAndBroadcast(positionId, authorizedNow, entry.privateKeyPem);
+  await signAndBroadcast(positionId, authorizedNow, entry.privateKeyB64);
 }
 
 async function tick(): Promise<void> {

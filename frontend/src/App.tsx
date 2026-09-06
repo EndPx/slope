@@ -63,7 +63,9 @@ export default function App() {
     wallets.find((w) => w.walletClientType === "privy") ?? wallets[0];
   const isEmbedded = wallet?.walletClientType === "privy";
   const [status, setStatus] = useState<string>("");
-  const [positionId, setPositionId] = useState<bigint | null>(null);
+  const [positionId, setPositionId] = useState<bigint | null>(
+    localStorage.getItem("positionId") ? BigInt(localStorage.getItem("positionId")!) : null,
+  );
   const [delegated, setDelegated] = useState(false);
 
   const provider = async () => {
@@ -154,6 +156,7 @@ export default function App() {
       if (!createdEvent) throw new Error("PositionCreated event not found in receipt");
       const id = BigInt(createdEvent.topics[1] as string);
       setPositionId(id);
+      localStorage.setItem("positionId", id.toString());
       setStatus(`3/4 position ${id} created (tx ${hash.slice(0, 10)}…)`);
     } catch (e: any) {
       setStatus(`error: ${e.shortMessage ?? e.message}`);
