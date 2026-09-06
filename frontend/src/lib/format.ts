@@ -22,6 +22,13 @@ export function fmtDecimal(value: string | null): string {
   return n.toLocaleString("en-US", {maximumFractionDigits: 2, minimumFractionDigits: 2});
 }
 
+/** Benchmark VWAPs are stored at the price's raw 18-decimal scale. */
+export function fmtVwap(value: string | null): string {
+  if (value === null) return "—";
+  const n = Number(value) / 1e18;
+  return n.toLocaleString("en-US", {maximumFractionDigits: 2, minimumFractionDigits: 2});
+}
+
 export function fmtBps(bps: string | null): string {
   if (bps === null) return "—";
   const n = Number(bps);

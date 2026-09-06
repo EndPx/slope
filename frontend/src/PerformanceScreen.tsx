@@ -6,7 +6,7 @@
  */
 import {useEffect, useState} from "react";
 import {fetchPositions, type Position} from "./lib/subgraph";
-import {fmtBps, fmtDecimal, fmtToken} from "./lib/format";
+import {fmtBps, fmtToken, fmtVwap} from "./lib/format";
 import {SHAPE_COLOR, SHAPE_NAME} from "./CurvePreview";
 
 export function PerformanceScreen(props: {onSelect: (id: bigint) => void}) {
@@ -99,8 +99,8 @@ export function PerformanceScreen(props: {onSelect: (id: bigint) => void}) {
               </div>
               <div className="bench-num num">{fmtBps(p.benchmark!.improvementBps)}</div>
               <div className="bench-meta">
-                {p.fills.length} fill{p.fills.length === 1 ? "" : "s"}, VWAP {fmtDecimal(p.benchmark!.actualVWAP)} vs
-                reference {fmtDecimal(p.benchmark!.twapVWAP)}
+                {p.fills.length} fill{p.fills.length === 1 ? "" : "s"}, VWAP {fmtVwap(p.benchmark!.actualVWAP)} vs
+                reference {fmtVwap(p.benchmark!.twapVWAP)}
                 {bps < 0 && (
                   <span className="note">
                     {" "}
@@ -143,8 +143,8 @@ export function PerformanceScreen(props: {onSelect: (id: bigint) => void}) {
                   {SHAPE_NAME[p.curveShape]}
                 </td>
                 <td className="num r">{fmtToken(p.executedAmount, 18)} dETH</td>
-                <td className="num r">{b ? fmtDecimal(b.actualVWAP) : "—"}</td>
-                <td className="num r">{b?.twapVWAP ? fmtDecimal(b.twapVWAP) : "—"}</td>
+                <td className="num r">{b ? fmtVwap(b.actualVWAP) : "—"}</td>
+                <td className="num r">{b?.twapVWAP ? fmtVwap(b.twapVWAP) : "—"}</td>
                 <td className={`num r ${b?.improvementBps && Number(b.improvementBps) < 0 ? "err" : "ok"}`}>
                   {b ? fmtBps(b.improvementBps) : "—"}
                 </td>
