@@ -17,11 +17,11 @@
  * transactions for the same position (Privy aggregations update after
  * signing, so concurrent requests can both pass evaluation).
  */
-import {createPublicClient, http, parseFunctionSelector} from "viem";
+import {createPublicClient, encodeFunctionData, http} from "viem";
 import {baseSepolia} from "viem/chains";
 import {PrivyClient} from "@privy-io/node";
 import {readFileSync} from "node:fs";
-import {loadConfig} from "./config.ts";
+import {loadConfig, requireCredentials} from "./config.ts";
 import {getEntry, loadKeystore} from "./keystore.ts";
 import {listDelegatedWallets} from "./privy-rest.ts";
 import {progress, Shape} from "../../shared/src/curve.ts";
@@ -77,8 +77,11 @@ const ABI = [
   },
 ] as const;
 
-const SELECTOR = parseFunctionSelector("adaptiveExecute(uint256,uint256)");
 const inFlight = new Map<string, Promise<void>>();
+
+function adaptiveExecuteCalldata(positionId: bigint, maxAmountIn: bigint): `0x${string}` {
+  return encodeFunctionData({abi: ABI, functionName: "adaptiveExecute", args: [positionId, maxAmountIn]});
+}
 
 async function signAndBroadcast(
   positionId: string,
@@ -98,9 +101,9 @@ async function signAndBroadcast(
     params: {
       transaction: {
         to: cfg.slopePosition as `0x${string}`,
-        chainId: Number(cfg.chainId),
+        chain_id: Number(cfg.chainId),
         value: "0x0",
-        data: SELECTOR + positionId.toString(16).padStart(64, "0") + maxAmountIn.toString(16).padStart(64, "0"),
+        data: adaptiveExecuteCalldata(BigInt(positionId), maxAmountIn),
       },
     },
     authorization_context: {authorization_private_keys: [privateKeyPem]},

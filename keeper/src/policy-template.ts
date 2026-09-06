@@ -47,7 +47,7 @@ export const ADAPTIVE_EXECUTE_ABI = [
     ],
     outputs: [{type: "bool"}],
   },
-] as const;
+];
 
 /** Max aggregation window Privy supports (docs): 72 hours. */
 export const MAX_AGGREGATION_WINDOW_SECONDS = 259_200;
