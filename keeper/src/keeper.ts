@@ -282,7 +282,14 @@ async function tick(): Promise<void> {
   }
 
   const plan = selectCandidates({snapshot, keystore: loadKeystore(), nowSeconds: BigInt(Math.floor(Date.now() / 1000))});
-  for (const id of plan.notDelegated) console.log(`[${id}] active on-chain, not delegated to this keeper — skipping`);
+  for (const c of plan.ranked) {
+    const shape = ["AGGRESSIVE", "NEUTRAL", "CONSERVATIVE"][c.curveShape] ?? c.curveShape;
+    console.log(`[${c.positionId}] candidate: shape=${shape} estimatedDue≈${c.estimatedDue}${c.degraded ? " (degraded: recent impact/bounds/quote skips)" : ""}`);
+  }
+  for (const c of plan.notDelegated) {
+    const shape = ["AGGRESSIVE", "NEUTRAL", "CONSERVATIVE"][c.curveShape] ?? c.curveShape;
+    console.log(`[${c.positionId}] not delegated to this keeper — live candidate: shape=${shape} estimatedDue≈${c.estimatedDue}`);
+  }
   for (const id of plan.notDue) console.log(`[${id}] NOT_DUE per subgraph (no RPC spent)`);
   for (const park of plan.fastParks) {
     disableEntry(park.positionId, `${park.note} at ${new Date().toISOString()}`);

@@ -40,11 +40,14 @@ contract CreateDemoPosition is Script {
             totalBudget: 10e18,
             minFillAmount: 1e17,
             duration: 1000,
-            curveShape: CurveShape.NEUTRAL,
+            // SHAPE env: 0 AGGRESSIVE, 1 NEUTRAL (default), 2 CONSERVATIVE —
+            // lets the demo create distinct shapes without code edits.
+            curveShape: CurveShape(uint8(vm.envOr("SHAPE", uint256(1)))),
             minPrice: 100e18,
             maxPrice: 10_000e18,
             maxSlippageBps: 500
         });
+        require(uint8(params.curveShape) <= 2, "demo: SHAPE must be 0/1/2");
 
         // Faucet: demo tokens are open-mint; the taker needs input inventory.
         MockMintable(m.dETH).mint(taker, params.totalBudget);

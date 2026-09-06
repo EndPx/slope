@@ -24,6 +24,8 @@ const DEGRADE_REASONS = new Set(["IMPACT", "BOUNDS", "QUOTE_INVALID"]);
 export interface RankedCandidate {
   positionId: string;
   estimatedDue: bigint;
+  /** Contract CurveShape: 0 AGGRESSIVE, 1 NEUTRAL, 2 CONSERVATIVE. */
+  curveShape: number;
   /** Repeated impact/bounds/quote skips: run last, log the diagnosis. */
   degraded: boolean;
 }
@@ -31,7 +33,10 @@ export interface RankedCandidate {
 export interface CandidatePlan {
   ranked: RankedCandidate[];
   notDue: string[];
-  notDelegated: string[];
+  /** Active positions this keeper holds no delegation for — logged with
+   *  their live curve-based due for observability (demo material), never
+   *  executed. */
+  notDelegated: Array<{positionId: string; estimatedDue: bigint; curveShape: number}>;
   fastParks: Array<{positionId: string; note: string}>;
 }
 
@@ -53,7 +58,13 @@ export function selectCandidates(params: {
   for (const candidate of params.snapshot.candidates) {
     const entry = params.keystore[candidate.positionId];
     if (!entry) {
-      plan.notDelegated.push(candidate.positionId);
+      // Due is still computed (pure math on indexed data) so the log shows
+      // the live curve for every active position, delegated or not.
+      plan.notDelegated.push({
+        positionId: candidate.positionId,
+        estimatedDue: estimatedDue(candidate, params.nowSeconds),
+        curveShape: candidate.curveShape,
+      });
       continue;
     }
     if (entry.disabled) {
@@ -85,7 +96,7 @@ export function selectCandidates(params: {
       candidate.recentSkips.length >= DEGRADE_STREAK &&
       candidate.recentSkips.slice(0, DEGRADE_STREAK).every((s) => DEGRADE_REASONS.has(s.reason));
 
-    plan.ranked.push({positionId: candidate.positionId, estimatedDue: due, degraded});
+    plan.ranked.push({positionId: candidate.positionId, estimatedDue: due, curveShape: candidate.curveShape, degraded});
   }
   plan.ranked.sort((a, b) => (a.estimatedDue > b.estimatedDue ? -1 : a.estimatedDue < b.estimatedDue ? 1 : 0));
   return plan;
