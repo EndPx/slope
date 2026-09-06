@@ -78,6 +78,8 @@ const ABI = [
 ] as const;
 
 const inFlight = new Map<string, Promise<void>>();
+const failures = new Map<string, number>();
+const PARK_AFTER = 3;
 
 function adaptiveExecuteCalldata(positionId: bigint, maxAmountIn: bigint): `0x${string}` {
   return encodeFunctionData({abi: ABI, functionName: "adaptiveExecute", args: [positionId, maxAmountIn]});
@@ -86,7 +88,7 @@ function adaptiveExecuteCalldata(positionId: bigint, maxAmountIn: bigint): `0x${
 async function signAndBroadcast(
   positionId: string,
   maxAmountIn: bigint,
-  privateKeyPem: string,
+  privateKeyB64: string,
 ): Promise<void> {
   // Discover the delegated wallet's Privy wallet id for the position owner.
   const entry = getEntry(positionId);
@@ -106,7 +108,7 @@ async function signAndBroadcast(
         data: adaptiveExecuteCalldata(BigInt(positionId), maxAmountIn),
       },
     },
-    authorization_context: {authorization_private_keys: [privateKeyPem]},
+    authorization_context: {authorization_private_keys: [privateKeyB64]},
   });
 
   const broadcastable = (signed as {signed_transaction?: string; rawTransaction?: string; signedTransaction?: string});
@@ -155,8 +157,19 @@ async function tick(): Promise<void> {
   const jobs: Promise<void>[] = [];
   for (const positionId of Object.keys(store)) {
     if (inFlight.has(positionId)) continue; // serialization per position
+    const failuresBefore = failures.get(positionId) ?? 0;
+    if (failuresBefore >= PARK_AFTER) continue; // parked: stop retrying
     const job = processPosition(positionId)
-      .catch((e) => console.error(`[${positionId}] error:`, e.message ?? e))
+      .then((r) => {
+        failures.delete(positionId);
+        return r;
+      })
+      .catch((e) => {
+        const count = failuresBefore + 1;
+        failures.set(positionId, count);
+        console.error(`[${positionId}] error (${count}/${PARK_AFTER}):`, e.message ?? e);
+        if (count >= PARK_AFTER) console.warn(`[${positionId}] PARKED — fix the cause and restart the keeper`);
+      })
       .finally(() => inFlight.delete(positionId));
     inFlight.set(positionId, job);
     jobs.push(job);
