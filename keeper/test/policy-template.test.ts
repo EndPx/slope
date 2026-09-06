@@ -37,6 +37,12 @@ describe("aggregation body", () => {
       abi: ADAPTIVE_EXECUTE_ABI,
     });
   });
+
+  it("names the window after its position when created per delegation", () => {
+    const perPosition = buildAggregationBody(SLOPE, 8n) as Record<string, any>;
+    expect(perPosition.name).toBe("Slope pos 8 maxAmountIn rolling sum (72h)");
+    expect(perPosition.name.length).toBeLessThan(50);
+  });
 });
 
 describe("position policy", () => {
@@ -64,6 +70,15 @@ describe("position policy", () => {
       operator: "eq",
       value: SLOPE,
     });
+  });
+
+  it("scopes the signer to its own positionId", () => {
+    const conditions = policy.rules[0].conditions;
+    const scope = conditions.find((c: any) => c.field === "adaptiveExecute.positionId");
+    expect(scope.operator).toBe("eq");
+    // Decoded calldata args are DECIMAL strings (live-tested: hex denied all)
+    expect(scope.value).toBe("2");
+    expect(scope.abi).toEqual(ADAPTIVE_EXECUTE_ABI);
   });
 
   it("restricts the function to adaptiveExecute and caps maxAmountIn per transaction", () => {

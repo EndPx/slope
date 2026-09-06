@@ -22,9 +22,9 @@ import {baseSepolia} from "viem/chains";
 import {PrivyClient} from "@privy-io/node";
 import {readFileSync} from "node:fs";
 import {loadConfig, requireCredentials} from "./config.ts";
-import {getEntry, loadKeystore} from "./keystore.ts";
+import {getEntry, loadKeystore, recordSign, disableEntry, KeystoreEntry} from "./keystore.ts";
 import {isDeterministicPrivyError as isDeterministic} from "./errors.ts";
-import {listDelegatedWallets} from "./privy-rest.ts";
+import {listDelegatedWallets, deleteAggregation} from "./privy-rest.ts";
 import {progress, Shape} from "../../shared/src/curve.ts";
 
 const cfg = loadConfig();
@@ -112,12 +112,44 @@ async function signAndBroadcast(
     authorization_context: {authorization_private_keys: [privateKeyB64]},
   });
 
+  // Privy consumed the aggregation window at sign time, so ledger the
+  // amount even if the broadcast later fails — the ledger must mirror what
+  // the aggregation recorded (validates the 2x-budget cap against reality).
+  const ledger = recordSign(positionId, maxAmountIn);
+  console.log(`[${positionId}] signed maxAmountIn=${maxAmountIn} (Σ ${ledger.signedSum} over ${ledger.signCount} sign(s))`);
+
   const broadcastable = (signed as {signed_transaction?: string; rawTransaction?: string; signedTransaction?: string});
   const raw = (broadcastable.signed_transaction ?? broadcastable.rawTransaction ?? broadcastable.signedTransaction) as `0x${string}`;
   const hash = await publicClient.sendRawTransaction({serializedTransaction: raw});
   console.log(`[${positionId}] broadcast ${hash}`);
   const receipt = await publicClient.waitForTransactionReceipt({hash});
   console.log(`[${positionId}] status: ${receipt.status} (block ${receipt.blockNumber})`);
+}
+
+/** Terminal positions never sign again: recycle their aggregation slot
+ *  (the app owns at most 10) and park the entry. */
+async function finalizePosition(
+  positionId: string,
+  position: {executedAmount: bigint; totalBudget: bigint},
+  entry: KeystoreEntry,
+): Promise<void> {
+  const completed = position.executedAmount >= position.totalBudget;
+  const reason = completed ? "completed" : "cancelled/inactive";
+  if (entry.aggregationId) {
+    try {
+      await deleteAggregation(cfg, entry.aggregationId);
+      console.log(`[${positionId}] ${reason} — aggregation ${entry.aggregationId} deleted (slot recycled)`);
+    } catch (e) {
+      // Not fatal: the slot is reclaimed before the next delegation.
+      console.error(`[${positionId}] aggregation deletion failed (retried on next delegation):`, (e as Error).message);
+    }
+  }
+  const signed = BigInt(entry.signedSum ?? "0");
+  const pct = position.totalBudget > 0n ? (signed * 100n) / position.totalBudget : 0n;
+  console.log(
+    `[${positionId}] ${reason}: executed ${position.executedAmount}/${position.totalBudget}; Σ signed ${signed} over ${entry.signCount ?? 0} sign(s) = ${pct}% of budget (aggregation cap 200%)`,
+  );
+  disableEntry(positionId, `${reason} at ${new Date().toISOString()}`);
 }
 
 async function processPosition(positionId: string): Promise<void> {
@@ -130,8 +162,8 @@ async function processPosition(positionId: string): Promise<void> {
     functionName: "getPosition",
     args: [id],
   });
-  if (!position.isActive) {
-    console.log(`[${positionId}] inactive — nothing to do`);
+  if (!position.isActive || position.executedAmount >= position.totalBudget) {
+    await finalizePosition(positionId, position, entry);
     return;
   }
   const elapsed = BigInt(Math.floor(Date.now() / 1000)) - position.startTimestamp;

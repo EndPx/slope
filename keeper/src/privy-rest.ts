@@ -41,6 +41,18 @@ async function get<T>(cfg: PrivyRestConfig, path: string): Promise<T> {
   return (await response.json()) as T;
 }
 
+async function patch<T>(cfg: PrivyRestConfig, path: string, body: unknown): Promise<T> {
+  const response = await fetch(`https://api.privy.io/v1${path}`, {
+    method: "PATCH",
+    headers: headers(cfg),
+    body: JSON.stringify(body),
+  });
+  if (!response.ok) {
+    throw new Error(`Privy REST PATCH ${path} failed: ${response.status} ${await response.text()}`);
+  }
+  return (await response.json()) as T;
+}
+
 export interface Aggregation {
   id: string;
   name?: string;
@@ -48,6 +60,18 @@ export interface Aggregation {
 
 export function createAggregation(cfg: PrivyRestConfig, body: object): Promise<Aggregation> {
   return post<Aggregation>(cfg, "/aggregations", body);
+}
+
+/** The app owns at most 10 aggregations — terminal positions must recycle
+ *  theirs, or new delegations start failing once the slots run out. */
+export async function deleteAggregation(cfg: PrivyRestConfig, id: string): Promise<void> {
+  const response = await fetch(`https://api.privy.io/v1/aggregations/${id}`, {
+    method: "DELETE",
+    headers: headers(cfg),
+  });
+  if (!response.ok) {
+    throw new Error(`Privy REST DELETE /aggregations/${id} failed: ${response.status} ${await response.text()}`);
+  }
 }
 
 export interface KeyQuorum {
@@ -72,6 +96,32 @@ export function createKeyQuorum(
 
 export function createPolicy(cfg: PrivyRestConfig, policy: object): Promise<{id: string}> {
   return post<{id: string}>(cfg, "/policies", policy);
+}
+
+export interface PolicyRecord {
+  id: string;
+  name?: string;
+  version?: string;
+  chain_type?: string;
+  rules?: Array<{
+    id?: string;
+    name?: string;
+    method?: string;
+    action?: string;
+    conditions?: Array<Record<string, unknown>>;
+  }>;
+}
+
+export function getPolicy(cfg: PrivyRestConfig, id: string): Promise<PolicyRecord> {
+  return get<PolicyRecord>(cfg, `/policies/${id}`);
+}
+
+export function updatePolicy(
+  cfg: PrivyRestConfig,
+  id: string,
+  body: object,
+): Promise<PolicyRecord> {
+  return patch<PolicyRecord>(cfg, `/policies/${id}`, body);
 }
 
 export interface DelegatedWallet {

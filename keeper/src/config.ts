@@ -14,8 +14,6 @@ export interface KeeperConfig {
   slopePosition: string;
   manifestPath: string;
   keystorePath: string;
-  /** Aggregation cap in raw units: headroom above the demo position budget. */
-  aggregationCapRaw: bigint;
   /** Extra seconds past the position window before the policy expires. */
   settlementBufferSeconds: bigint;
 }
@@ -41,10 +39,6 @@ export function loadConfig(): KeeperConfig {
     slopePosition: m.slopePosition,
     manifestPath: "deployments/base-sepolia.json",
     keystorePath: ".keystore.json",
-    // REVISION 1 Caveat 1: skipped fills still consume aggregation headroom,
-    // and the app-wide aggregation is shared across positions — cap at
-    // 2.5x a single 10e18 budget instead of a tight value.
-    aggregationCapRaw: 100_000_000_000_000_000_000n, // 100 tokens raw: 10x headroom — denied attempts still consume the sum
     settlementBufferSeconds: 86_400n, // one day past the window for terminal settles
   };
 }

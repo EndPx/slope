@@ -7,8 +7,9 @@
  *  - Scope: target allowlist (SlopePosition only) + function selector
  *    (adaptiveExecute only) + per-transaction cap on the maxAmountIn calldata
  *    param + a rolling aggregation cap (blast-radius limit) + expiry.
- *  - The aggregation is app-wide and REST-only (Node SDK has no `create`);
- *    it sums the decoded `maxAmountIn` calldata param over a rolling window.
+ *  - The aggregation is REST-only (Node SDK has no `create`); it sums the
+ *    decoded `maxAmountIn` calldata param over a rolling window. One
+ *    aggregation PER POSITION, created fresh at delegation time.
  *  - Framing rule: the aggregation is a RATE LIMIT / blast-radius control,
  *    NOT budget enforcement — budget enforcement is the on-chain invariant
  *    `executedAmount <= totalBudget`.
@@ -55,12 +56,24 @@ export const MAX_AGGREGATION_WINDOW_SECONDS = 259_200;
 /**
  * Builds the aggregation body: sums the decoded `maxAmountIn` calldata param
  * of every adaptiveExecute call to SlopePosition over a rolling 72h window.
+ *
+ * One aggregation PER POSITION, created fresh at delegation: Privy records
+ * the metric at SIGN time, so denied attempts still consume the rolling sum.
+ * An app-wide window let a broken position's retries starve every other
+ * delegation (live incident 2026-09-06: 12 failed signs x 10 dETH exceeded
+ * the 100 dETH cap and denied all new signs with policy_violation). A fresh
+ * per-position window bounds that blast radius to the position's own
+ * headroom.
+ *
  * The tracking conditions must stay in sync with the policy's allow
  * conditions (docs: divergence silently resets the cap).
  */
-export function buildAggregationBody(slopePosition: string): object {
+export function buildAggregationBody(slopePosition: string, positionId?: bigint): object {
   return {
-    name: "Slope adaptiveExecute maxAmountIn rolling sum (72h)",
+    name:
+      positionId === undefined
+        ? "Slope adaptiveExecute maxAmountIn rolling sum (72h)"
+        : `Slope pos ${positionId} maxAmountIn rolling sum (72h)`,
     method: "eth_signTransaction",
     metric: {
       field: "adaptiveExecute.maxAmountIn",
@@ -97,10 +110,14 @@ export function buildAggregationBody(slopePosition: string): object {
  * @param params.budgetRaw       the position's totalBudget in raw units —
  *                               per-transaction cap on maxAmountIn
  * @param params.aggregationId   Privy aggregation id (rate limit reference)
- * @param params.aggregationCapRaw  rolling-sum cap in raw units (headroom
- *                               ABOVE budget — skipped fills still consume
- *                               aggregation headroom because Privy records
- *                               at sign time, not at execution success)
+ * @param params.aggregationCapRaw  rolling-sum cap in raw units: 2x the
+ *                               position budget. Legitimate fills sum to
+ *                               exactly budgetRaw over the position's life
+ *                               (the keeper signs the due increment); the
+ *                               2x headroom absorbs signs that consumed
+ *                               aggregation but failed to broadcast — skipped
+ *                               fills consume too, because Privy records at
+ *                               sign time, not at execution success
  * @param params.expirySeconds   unix timestamp after which Privy stops
  *                               signing: position start + duration + a
  *                               settlement buffer (the terminal clamp may
@@ -137,6 +154,17 @@ export function buildPositionPolicy(params: {
             field: "function_name",
             operator: "eq",
             value: "adaptiveExecute",
+            abi: ADAPTIVE_EXECUTE_ABI,
+          },
+          {
+            field_source: "ethereum_calldata",
+            field: "adaptiveExecute.positionId",
+            operator: "eq",
+            // Bind the signer to ITS OWN position: without this, the session
+            // key could drive adaptiveExecute for ANY position (the contract
+            // still enforces per-position authorization, but the policy-level
+            // claim is "scoped to this position").
+            value: params.positionId.toString(),
             abi: ADAPTIVE_EXECUTE_ABI,
           },
           {
