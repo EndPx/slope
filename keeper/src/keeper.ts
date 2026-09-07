@@ -96,6 +96,12 @@ const inFlight = new Map<string, Promise<void>>();
 const failures = new Map<string, number>();
 const PARK_AFTER = 3;
 
+/** HTTP 429 back-off: the browser, this keeper, and any other consumer
+ *  share one Studio key. Hammering a rate-limited key only extends the
+ *  lockout, so after a 429 the keeper skips ticks for a minute — still
+ *  fail-closed, still loud, just not stampeding. */
+let rateLimitedUntil = 0;
+
 const SKIP_ABI = [
   {
     type: "event",
@@ -265,11 +271,21 @@ async function tick(): Promise<void> {
   // Decision layer: live subgraph snapshot. Fail-closed — no snapshot, no
   // execution, and the reason is logged loudly. Never fall back to iterating
   // the keystore: that would make the live-Graph-data claim false.
+  if (Date.now() < rateLimitedUntil) {
+    console.log("[rate-limit] subgraph 429 back-off active — skipping this tick, no execution");
+    return;
+  }
   let snapshot;
   try {
     snapshot = await fetchSnapshot(cfg.graphApiKey, cfg.graphQueryUrl);
   } catch (e) {
-    console.error("SUBGRAPH UNREACHABLE — no execution this tick (no fallback path):", String((e as Error)?.message ?? e).slice(0, 300));
+    const message = String((e as Error)?.message ?? e);
+    if (message.includes("429")) {
+      rateLimitedUntil = Date.now() + 60_000;
+      console.error("subgraph rate limited (429) — backing off 60 s, no execution, no fallback path");
+      return;
+    }
+    console.error("SUBGRAPH UNREACHABLE — no execution this tick (no fallback path):", message.slice(0, 300));
     return;
   }
 
