@@ -122,7 +122,7 @@ export function PositionsScreen() {
               const mine = ownAddress && p.owner.toLowerCase() === ownAddress;
               const status = !p.isActive ? (p.executedAmount >= p.totalBudget ? "completed" : "cancelled") : "live";
               return (
-                <tr key={p.id} onClick={() => navigate(`/positions/${p.id}`)} style={{cursor: "pointer"}}>
+                <tr key={p.id} tabIndex={0} className="clickable" onClick={() => navigate(`/positions/${p.id}`)} onKeyDown={(e) => e.key === "Enter" && navigate(`/positions/${p.id}`)}>
                   <td className="num">#{p.id}{mine ? " (yours)" : ""}</td>
                   <td>
                     <span className="dot" style={{"--seg-color": SHAPE_COLOR[p.curveShape]} as React.CSSProperties} />

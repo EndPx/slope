@@ -12,7 +12,7 @@ import {Spring} from "./lib/spring";
 export const SHAPE_COLOR = ["#ff7a45", "#eae5d6", "#4fb8a9"] as const;
 export const SHAPE_NAME = ["Aggressive", "Neutral", "Conservative"] as const;
 const SAMPLES = 120;
-const M = {left: 44, right: 30, top: 14, bottom: 30};
+const M = {left: 44, right: 42, top: 14, bottom: 30};
 
 function curvePoints(shape: number, height: number): Float64Array {
   const pts = new Float64Array(SAMPLES);
@@ -87,20 +87,32 @@ export function CurvePreview(props: {selected: number; durationSeconds: number; 
           ctx.stroke();
           if (i % 4 === 0) {
             const seconds = Math.round((i / ticks) * Number(canvas.dataset.duration ?? 900));
-            ctx.fillText(seconds === 0 ? "0s" : `${Math.round(seconds / 60)} min`, x, rulerY + 15);
+            const label = seconds === 0 ? "0s" : `${Math.round(seconds / 60)} min`;
+            // The last label right-aligns so it never crowds the panel edge.
+            if (i === ticks) {
+              ctx.textAlign = "right";
+              ctx.fillText(label, x, rulerY + 15);
+              ctx.textAlign = "center";
+            } else {
+              ctx.fillText(label, x, rulerY + 15);
+            }
           }
         }
       }
       ctx.globalAlpha = 1;
 
       // Three equal-weight curves; only opacity separates the selection.
-      // During the intro each curve draws itself left to right.
-      for (let s = 0; s < 3; s++) {
+      // During the intro each curve draws itself left to right. The
+      // selected curve draws LAST so nothing overlaps it where the shapes
+      // converge at the window end.
+      const order = [0, 1, 2].filter((s) => s !== selectedRef.current);
+      order.push(selectedRef.current);
+      for (const s of order) {
         const reveal = revealRef.current[s];
         if (reveal <= 0) continue;
         ctx.strokeStyle = SHAPE_COLOR[s];
         ctx.globalAlpha = alphasRef.current[s];
-        ctx.lineWidth = 2;
+        ctx.lineWidth = 2.25;
         ctx.lineJoin = "round";
         const pts = pointsRef.current[s];
         const last = Math.max(1, Math.floor((pts.length - 1) * reveal));
@@ -180,6 +192,7 @@ export function CurvePreview(props: {selected: number; durationSeconds: number; 
     };
   }, []);
 
+  const selectedRef = useRef(props.selected);
   const retargetRef = useRef<((selected: number) => void) | null>(null);
 
   useEffect(() => {
@@ -187,6 +200,7 @@ export function CurvePreview(props: {selected: number; durationSeconds: number; 
     if (!retargetRef.current) {
       alphasRef.current = [0, 1, 2].map((s) => (s === props.selected ? 1 : 0.4));
     }
+    selectedRef.current = props.selected;
     retargetRef.current?.(props.selected);
   }, [props.selected]);
 

@@ -141,7 +141,7 @@ export function PerformanceScreen() {
           {positions.map((p) => {
             const b = p.benchmark;
             return (
-              <tr key={p.id} onClick={() => navigate(`/positions/${p.id}`)} style={{cursor: "pointer"}}>
+              <tr key={p.id} tabIndex={0} className="clickable" onClick={() => navigate(`/positions/${p.id}`)} onKeyDown={(e) => e.key === "Enter" && navigate(`/positions/${p.id}`)}>
                 <td className="num">#{p.id}</td>
                 <td>
                   <span className="dot" style={{"--seg-color": SHAPE_COLOR[p.curveShape]} as React.CSSProperties} />

@@ -26,10 +26,52 @@
 
 body {
   margin: 0;
-  background: var(--ink);
+  background-color: var(--ink);
+  /* The plotting-paper surface the design plan commits to: a faint minor
+   * grid every 44px and a major one every 220px, both derived from Ink.
+   * Solid panels sit on top; exposed ink reads as the desk. */
+  background-image:
+    linear-gradient(to right, color-mix(in srgb, var(--hairline) 22%, transparent) 1px, transparent 1px),
+    linear-gradient(to bottom, color-mix(in srgb, var(--hairline) 22%, transparent) 1px, transparent 1px),
+    linear-gradient(to right, color-mix(in srgb, var(--hairline) 40%, transparent) 1px, transparent 1px),
+    linear-gradient(to bottom, color-mix(in srgb, var(--hairline) 40%, transparent) 1px, transparent 1px);
+  background-size:
+    44px 44px,
+    44px 44px,
+    220px 220px,
+    220px 220px;
+  background-attachment: fixed;
   color: var(--paper);
   font-family: var(--font-ui);
   font-weight: 500;
+}
+
+/* Browser surfaces belong to the design too — not to the defaults. */
+::selection {
+  background: var(--paper);
+  color: var(--ink);
+}
+main input {
+  caret-color: var(--paper);
+}
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--hairline) transparent;
+}
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--hairline);
+  border-radius: 5px;
+  border: 2px solid var(--ink);
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #3a5a63;
 }
 
 /* Docked app frame: chrome on top, scrolling work area in the middle,
@@ -52,10 +94,14 @@ main .chrome {
   flex: none;
   display: flex;
   align-items: center;
-  gap: 1.1rem;
+  flex-wrap: wrap;
+  gap: 0.5rem 1.1rem;
   padding: 0.65rem 1.25rem;
   background: var(--ink); /* solid: mono numbers scrolling underneath must not read through */
   border-bottom: 1px solid var(--hairline-soft);
+}
+main .chrome-right {
+  gap: 0.6rem;
 }
 
 main .wordmark {
@@ -224,6 +270,30 @@ main .strip {
 }
 main .strip .grow { flex: 1; min-width: 220px; }
 
+main .pillars {
+  display: grid;
+  gap: 2rem;
+}
+@media (min-width: 1024px) {
+  main .pillars {
+    grid-template-columns: repeat(3, 1fr);
+    gap: 2.5rem;
+  }
+}
+main .pillars h3 {
+  font: 700 1.02rem var(--font-ui);
+  letter-spacing: -0.01em;
+  margin: 0 0 0.5rem;
+  color: var(--paper);
+}
+main .pillars p {
+  margin: 0;
+  font: 400 0.88rem var(--font-ui);
+  color: var(--muted);
+  line-height: 1.55;
+  max-width: 34ch;
+}
+
 main .empty {
   border-top: 1px solid var(--hairline);
   border-radius: 3px;
@@ -276,6 +346,12 @@ main table.log td {
 }
 main table.log th.r,
 main table.log td.r { text-align: right; }
+main table.log tbody tr.clickable { cursor: pointer; }
+main table.log tbody tr.clickable:hover td { background: var(--panel-2); }
+main table.log tbody tr.clickable:focus-visible {
+  outline: 1px solid var(--patina);
+  outline-offset: -1px;
+}
 main table.log tr.held td { background: color-mix(in srgb, var(--amber) 5%, transparent); }
 main .held-head {
   color: var(--amber);

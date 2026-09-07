@@ -36,20 +36,20 @@ export function LandingScreen() {
   }, []);
 
   return (
-    <section className="flex flex-col gap-10">
-      <div className="grid gap-8 lg:grid-cols-[1fr_1.2fr] lg:gap-12 items-center">
+    <section className="flex flex-col gap-8">
+      <div className="grid gap-8 lg:grid-cols-[1fr_1.2fr] lg:gap-12 items-center lg:min-h-[480px]">
         <div>
-          <h1 className="display" style={{fontSize: "clamp(2rem, 4vw, 3rem)"}}>
+          <h1 className="display" style={{fontSize: "clamp(2.1rem, 4.2vw, 3.2rem)"}}>
             Split one large swap across time.
           </h1>
-          <p className="note" style={{fontSize: "0.95rem", marginTop: "0.9rem", maxWidth: 460}}>
+          <p className="note" style={{fontSize: "0.98rem", marginTop: "1rem", maxWidth: 460, lineHeight: 1.55}}>
             A big order into a thin pool is price impact you pay for. Slope runs it as a schedule — slices over
             minutes, on the curve you choose, inside rails you set.
           </p>
-          <button className="act primary" style={{marginTop: "1.4rem", maxWidth: 280}} onClick={() => navigate("/create")}>
+          <button className="act primary" style={{marginTop: "1.6rem", maxWidth: 280}} onClick={() => navigate("/create")}>
             Set a schedule
           </button>
-          <p className="note" style={{marginTop: "0.7rem"}}>
+          <p className="note" style={{marginTop: "0.8rem"}}>
             Live on Base Sepolia{" "}
             <a href={`${M.explorerUrl}/address/${M.slopePosition}`} target="_blank" rel="noreferrer">
               contract
@@ -66,33 +66,21 @@ export function LandingScreen() {
         <CurvePreview selected={1} durationSeconds={900} intro />
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-3">
+      <div className="pillars">
         <div>
-          <p className="label" style={{color: "var(--paper)"}}>
-            The schedule is the only authority
-          </p>
-          <p className="note">
-            Nothing moves unless the curve authorizes it. The contract computes every allowed slice; the delegated
-            keeper can only tighten it, never exceed it.
-          </p>
+          <h3>The schedule is the only authority</h3>
+          <p>Nothing moves unless the curve authorizes it. The contract computes every allowed slice; the delegated
+            keeper can only tighten it, never exceed it.</p>
         </div>
         <div>
-          <p className="label" style={{color: "var(--paper)"}}>
-            Your tokens never leave your wallet
-          </p>
-          <p className="note">
-            Each slice is pulled at fill time, not parked in escrow. An unexecuted budget is simply still yours —
-            there is nothing to withdraw.
-          </p>
+          <h3>Your tokens never leave your wallet</h3>
+          <p>Each slice is pulled at fill time, not parked in escrow. An unexecuted budget is simply still yours —
+            there is nothing to withdraw.</p>
         </div>
         <div>
-          <p className="label" style={{color: "var(--paper)"}}>
-            It holds back when it should
-          </p>
-          <p className="note">
-            Out-of-band prices, excessive impact, an empty allowance: the system refuses to act — and every refusal is
-            recorded with its reason.
-          </p>
+          <h3>It holds back when it should</h3>
+          <p>Out-of-band prices, excessive impact, an empty allowance: the system refuses to act — and every refusal
+            is recorded with its reason.</p>
         </div>
       </div>
     </section>
