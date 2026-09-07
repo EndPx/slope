@@ -36,10 +36,10 @@ body {
    * top-right corner is the implied light source. */
   background-image:
     radial-gradient(1100px 520px at 85% -8%, rgba(91, 140, 255, 0.07), transparent 62%),
-    repeating-linear-gradient(to right, rgba(69, 196, 216, 0.10) 0 1px, transparent 1px 100px),
-    repeating-linear-gradient(to bottom, rgba(69, 196, 216, 0.10) 0 1px, transparent 1px 100px),
-    repeating-linear-gradient(to right, rgba(29, 49, 56, 0.45) 0 1px, transparent 1px 20px),
-    repeating-linear-gradient(to bottom, rgba(29, 49, 56, 0.45) 0 1px, transparent 1px 20px);
+    repeating-linear-gradient(to right, rgba(69, 196, 216, 0.08) 0 1px, transparent 1px 100px),
+    repeating-linear-gradient(to bottom, rgba(69, 196, 216, 0.08) 0 1px, transparent 1px 100px),
+    repeating-linear-gradient(to right, rgba(29, 49, 56, 0.34) 0 1px, transparent 1px 20px),
+    repeating-linear-gradient(to bottom, rgba(29, 49, 56, 0.34) 0 1px, transparent 1px 20px);
   color: var(--paper);
   font-family: var(--font-ui);
   font-weight: 500;
@@ -90,8 +90,7 @@ main .chrome {
   position: relative;
   z-index: 10;
   flex: none;
-  background: rgba(7, 11, 19, 0.86);
-  backdrop-filter: blur(14px);
+  background: var(--ink);
   border-bottom: 1px solid var(--hairline-soft);
 }
 main .chrome > .container {
@@ -163,6 +162,7 @@ main .work {
   flex: 1 1 auto;
   min-height: 0; /* lets the flex item actually scroll instead of stretching */
   overflow-y: auto;
+  overflow-x: clip;
   width: 100%;
   padding: 2rem 0 2.5rem;
 }
@@ -675,9 +675,8 @@ main td.neg { color: var(--ember); }
   border: 1px solid var(--hairline);
   border-radius: 26px 26px 26px 9px;
   background:
-    radial-gradient(circle at 50% 44%, rgba(69, 196, 216, 0.055), transparent 32%),
-    linear-gradient(150deg, rgba(255, 255, 255, 0.028), transparent 30%),
-    rgba(9, 14, 26, 0.88);
+    radial-gradient(circle at 50% 44%, rgba(69, 196, 216, 0.05), transparent 32%),
+    #0b111d;
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.04),
     0 40px 90px rgba(0, 0, 0, 0.45),

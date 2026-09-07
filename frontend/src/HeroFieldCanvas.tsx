@@ -74,20 +74,46 @@ export function HeroFieldCanvas(props: {pace: number}) {
         const f1 = fracAt(i / LANES, sel);
         const f2 = fracAt((i + 1) / LANES, sel);
         const slice = Math.max(f2 - f1, 0.004);
-        const barH = slice * ih * 0.94;
+        const barH = Math.max(slice * ih * 0.94, 2.5); // perceptual floor: tiny slices stay visible as stubs
         const x = x0 + i * laneW + laneW * 0.22;
         const wBar = laneW * 0.56;
-        ctx.globalAlpha = 0.16 + Math.min(barH / ih, 1) * 0.14;
+        ctx.globalAlpha = 0.15 + Math.min(barH / ih, 1) * 0.12;
         ctx.fillStyle = selColor;
         ctx.fillRect(x, floor - barH, wBar, barH);
-        // glowing cap at the column top
-        ctx.globalAlpha = 0.9;
-        ctx.shadowBlur = 10;
-        ctx.shadowColor = selColor;
-        ctx.fillRect(x, floor - barH - 1, wBar, 2);
-        ctx.shadowBlur = 0;
       }
       ctx.globalAlpha = 1;
+
+      // THE ruler — the most prominent element: baseline, minor ticks per
+      // slice, major ticks + time labels every fifth, direction arrow
+      ctx.strokeStyle = "rgba(139, 155, 176, 0.55)";
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.moveTo(x0, floor + 0.5);
+      ctx.lineTo(x0 + iw + 6, floor + 0.5);
+      ctx.stroke();
+      // arrowhead: time flows this way
+      ctx.fillStyle = "rgba(139, 155, 176, 0.75)";
+      ctx.beginPath();
+      ctx.moveTo(x0 + iw + 12, floor + 0.5);
+      ctx.lineTo(x0 + iw + 4, floor - 3.5);
+      ctx.lineTo(x0 + iw + 4, floor + 4.5);
+      ctx.closePath();
+      ctx.fill();
+      ctx.font = '10px "IBM Plex Mono", monospace';
+      ctx.textAlign = "center";
+      for (let i = 0; i <= LANES; i++) {
+        if (i % 5 !== 0 && i !== LANES) continue;
+        const x = x0 + (i / LANES) * iw;
+        ctx.strokeStyle = "rgba(139, 155, 176, 0.55)";
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(x, floor + 0.5);
+        ctx.lineTo(x, floor + 6.5);
+        ctx.stroke();
+        const pct = Math.round((i / LANES) * 100);
+        ctx.fillStyle = "rgba(139, 155, 176, 0.8)";
+        ctx.fillText(i === 0 ? "T+0" : `T+${pct}%`, x, floor + 20);
+      }
 
       // axis micro-labels — what this field even is
       ctx.fillStyle = "rgba(139, 155, 176, 0.75)";
@@ -96,14 +122,6 @@ export function HeroFieldCanvas(props: {pace: number}) {
       ctx.fillText("% BUDGET EXECUTED", x0, y0 - 8);
       ctx.textAlign = "right";
       ctx.fillText("TIME →", x0 + iw, floor + 20);
-
-      // floor line + end-of-window tick
-      ctx.strokeStyle = "rgba(139, 155, 176, 0.35)";
-      ctx.lineWidth = 1;
-      ctx.beginPath();
-      ctx.moveTo(x0, floor + 0.5);
-      ctx.lineTo(x0 + iw, floor + 0.5);
-      ctx.stroke();
 
       // pace reference lines: others faint, selected bright with glow
       const order = SHAPES.filter((s) => s !== sel);

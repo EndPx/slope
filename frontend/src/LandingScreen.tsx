@@ -52,13 +52,12 @@ export function LandingScreen() {
   return (
     <section className="grid gap-10 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)] lg:gap-12 items-center">
       <div>
-        <p className="meta">Time-distributed execution</p>
         <h1 className="display" style={{fontSize: "clamp(2.4rem, 4.6vw, 3.6rem)", lineHeight: 1.02}}>
-          Shape the <span className="grad">schedule.</span>
+          A big swap, executed slowly.
         </h1>
         <p className="note" style={{fontSize: "1rem", marginTop: "1.1rem", lineHeight: 1.6, maxWidth: 470}}>
-          Liquidity is no longer a single violent swap. Shape a schedule, publish its geometry, and let every slice
-          fill through it — inside rails you set.
+          You hold an order big enough to move the market. Slope breaks it into scheduled slices on the pace you
+          choose — each slice small enough to slip under the impact, each inside rails you set.
         </p>
         <button className="act primary" style={{marginTop: "1.7rem", maxWidth: 260}} onClick={() => navigate("/create")}>
           Set a schedule
@@ -78,12 +77,9 @@ export function LandingScreen() {
         <article className="hero-field-card">
           <header>
             <div className="field-title">
-              <strong>SLOPE FIELD</strong>
-              <small>PARAMETRIC EXECUTION ENGINE</small>
+              <strong>PACE RULER</strong>
+              <small>THREE SCHEDULES · ONE TIME AXIS</small>
             </div>
-            <span className="hero-live">
-              <i /> ENGINE ACTIVE
-            </span>
           </header>
           <div className="hero-canvas-wrap">
             <HeroFieldCanvas pace={pace} />
