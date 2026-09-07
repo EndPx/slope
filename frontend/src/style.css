@@ -249,14 +249,17 @@ main .ok { color: var(--patina); }
 main .num { font-family: var(--font-num); font-variant-numeric: tabular-nums; }
 
 main .plot {
-  border-top: 1px solid var(--hairline);
+  border: 1px solid var(--hairline);
   background:
     linear-gradient(var(--hairline-soft) 1px, transparent 1px) 0 0 / 100% 25% no-repeat,
     var(--panel);
-  border-radius: 0 0 3px 3px;
-  padding: 0.75rem 0.5rem 0.4rem;
+  border-radius: 3px;
+  padding: 0.75rem 0.6rem 0.4rem;
 }
 main .plot canvas { display: block; width: 100%; }
+@media (max-width: 640px) {
+  main .plot canvas { aspect-ratio: 1.7 !important; }
+}
 
 main .strip {
   border: 1px solid var(--hairline);

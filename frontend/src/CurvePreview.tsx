@@ -26,7 +26,7 @@ function curvePoints(shape: number, height: number): Float64Array {
   return pts;
 }
 
-export function CurvePreview(props: {selected: number; durationSeconds: number; intro?: boolean}) {
+export function CurvePreview(props: {selected: number; durationSeconds: number; intro?: boolean; aspect?: number}) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const pointsRef = useRef<Float64Array[]>([]);
   const alphasRef = useRef([1, 0.4, 0.4]);
@@ -211,9 +211,12 @@ export function CurvePreview(props: {selected: number; durationSeconds: number; 
 
   return (
     <div className="plot">
+      {/* Fixed aspect ratio: the instrument keeps its SHAPE on every screen —
+        only its size and position change (like the reference). Mobile gets a
+        taller ratio so the ruler labels stay readable. */}
       <canvas
         ref={canvasRef}
-        style={{height: 300}}
+        style={{aspectRatio: String(props.aspect ?? 2.6), height: "auto"}}
         data-duration={props.durationSeconds}
         aria-label={`Schedule preview — ${SHAPE_NAME[props.selected]} pace`}
       />

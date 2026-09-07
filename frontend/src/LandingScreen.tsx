@@ -36,37 +36,35 @@ export function LandingScreen() {
   }, []);
 
   return (
-    <section className="flex flex-col gap-8">
-      <div className="grid gap-8 lg:grid-cols-[1fr_1.2fr] lg:gap-12 items-center lg:min-h-[480px]">
-        <div>
-          <h1 className="display" style={{fontSize: "clamp(2.1rem, 4.2vw, 3.2rem)"}}>
+    <section className="flex flex-col">
+      <div className="flex flex-wrap items-end gap-x-10 gap-y-6">
+        <div style={{maxWidth: 620}}>
+          <h1 className="display" style={{fontSize: "clamp(1.9rem, 3.4vw, 2.7rem)"}}>
             Split one large swap across time.
           </h1>
-          <p className="note" style={{fontSize: "0.98rem", marginTop: "1rem", maxWidth: 460, lineHeight: 1.55}}>
+          <p className="note" style={{fontSize: "0.95rem", marginTop: "0.7rem", lineHeight: 1.55}}>
             A big order into a thin pool is price impact you pay for. Slope runs it as a schedule — slices over
             minutes, on the curve you choose, inside rails you set.
           </p>
-          <button className="act primary" style={{marginTop: "1.6rem", maxWidth: 280}} onClick={() => navigate("/create")}>
+        </div>
+        <div style={{marginLeft: "auto"}}>
+          <button className="act primary" style={{padding: "0.6rem 1.4rem"}} onClick={() => navigate("/create")}>
             Set a schedule
           </button>
-          <p className="note" style={{marginTop: "0.8rem"}}>
-            Live on Base Sepolia{" "}
+          <p className="note num" style={{marginTop: "0.55rem", textAlign: "right"}}>
+            live · {fillCount !== null ? `${fillCount} fills` : "…"} ·{" "}
             <a href={`${M.explorerUrl}/address/${M.slopePosition}`} target="_blank" rel="noreferrer">
               contract
             </a>
-            {fillCount !== null && (
-              <>
-                {" "}
-                with <span className="num">{fillCount}</span> fills executed
-              </>
-            )}
-            , no custody.
           </p>
         </div>
+      </div>
+
+      <div style={{marginTop: "1.4rem"}}>
         <CurvePreview selected={1} durationSeconds={900} intro />
       </div>
 
-      <div className="pillars">
+      <div className="pillars" style={{marginTop: "2.2rem"}}>
         <div>
           <h3>The schedule is the only authority</h3>
           <p>Nothing moves unless the curve authorizes it. The contract computes every allowed slice; the delegated
