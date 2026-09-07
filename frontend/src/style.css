@@ -22,6 +22,7 @@
   --hairline: #13303a;
   --hairline-soft: #0c1a23;
   --radius: 14px;
+  --ease-emphasized: cubic-bezier(0.2, 0, 0, 1);
   --font-ui: "Archivo", system-ui, sans-serif;
   --font-num: "IBM Plex Mono", ui-monospace, monospace;
 }
@@ -135,7 +136,7 @@ main .seg button,
 main .field,
 main .linklike,
 main table.log tbody tr.clickable td {
-  transition: color 160ms ease, border-color 160ms ease, background-color 160ms ease, box-shadow 160ms ease;
+  transition: color 180ms var(--ease-emphasized), border-color 180ms var(--ease-emphasized), background-color 180ms var(--ease-emphasized), box-shadow 180ms var(--ease-emphasized);
 }
 @media (prefers-reduced-motion: reduce) {
   main nav a,
