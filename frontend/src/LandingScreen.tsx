@@ -41,7 +41,7 @@ export function LandingScreen() {
   }, []);
 
   return (
-    <section className="grid gap-8 lg:grid-cols-[1fr_1.1fr] lg:gap-12 items-center">
+    <section className="grid gap-8 lg:grid-cols-[1fr_auto] lg:gap-10 items-center">
       <div>
         <p className="meta">Time-distributed execution</p>
         <h1 className="display" style={{fontSize: "clamp(2.4rem, 4.6vw, 3.6rem)", lineHeight: 1.02}}>

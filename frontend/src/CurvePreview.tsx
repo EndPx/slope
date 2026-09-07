@@ -214,13 +214,15 @@ export function CurvePreview(props: {selected: number; durationSeconds: number; 
   }, [props.durationSeconds]);
 
   return (
-    <div className="plot">
-      {/* Fixed aspect ratio: the instrument keeps its SHAPE on every screen —
-        only its size and position change (like the reference). Mobile gets a
-        taller ratio so the ruler labels stay readable. */}
+    <div className="plot" style={{width: "fit-content", maxWidth: "100%"}}>
+      {/* The instrument has a FIXED SIZE in pixels: 880 x ~339, on every
+        screen. It never changes shape or size — the LAYOUT repositions it
+        (next to the text on wide screens, below on narrow ones). Only when
+        the viewport itself is narrower than the instrument does it scale
+        down uniformly, like an image. */}
       <canvas
         ref={canvasRef}
-        style={{aspectRatio: String(props.aspect ?? 2.6), height: "auto"}}
+        style={{width: 880, maxWidth: "100%", aspectRatio: "2.6", height: "auto"}}
         data-duration={props.durationSeconds}
         aria-label={`Schedule preview — ${SHAPE_NAME[props.selected]} pace`}
       />
