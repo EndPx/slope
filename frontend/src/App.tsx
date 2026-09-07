@@ -140,33 +140,35 @@ export default function App() {
             </NavLink>
           ))}
         </nav>
-        <span style={{marginLeft: "auto"}} />
-        <LiveStatus />
-        {wallet && (
-          <span style={{position: "relative"}}>
-            <button className="linklike" onClick={() => setShowFaucet((v) => !v)}>
-              faucet
-            </button>
-            {showFaucet && <FaucetPanel onClose={() => setShowFaucet(false)} />}
-          </span>
-        )}
-        <a className="linklike" href="https://github.com/EndPx/slope" target="_blank" rel="noreferrer">
-          docs
-        </a>
-        {wallet ? (
-          <>
-            <span className="note num" style={{margin: 0}}>
-              {wallet.address.slice(0, 6)}…{wallet.address.slice(-4)}
+        <div className="chrome-right">
+          <LiveStatus />
+          {wallet && (
+            <span style={{position: "relative"}}>
+              <button className="linklike" onClick={() => setShowFaucet((v) => !v)}>
+                faucet
+              </button>
+              {showFaucet && <FaucetPanel onClose={() => setShowFaucet(false)} />}
             </span>
-            <button className="linklike" onClick={() => logout()}>
-              sign out
+          )}
+          <a className="linklike" href="https://github.com/EndPx/slope" target="_blank" rel="noreferrer">
+            docs
+          </a>
+          {wallet ? (
+            <span className="account" title="Privy embedded wallet — the schedule pulls slices from here">
+              <span className="account-dot" />
+              <span className="num">
+                {wallet.address.slice(0, 6)}…{wallet.address.slice(-4)}
+              </span>
+              <button className="linklike account-out" onClick={() => logout()}>
+                sign out
+              </button>
+            </span>
+          ) : (
+            <button className="act" style={{padding: "0.3rem 0.8rem", width: "auto"}} onClick={() => login({})}>
+              sign in
             </button>
-          </>
-        ) : (
-          <button className="act" style={{padding: "0.3rem 0.8rem", width: "auto"}} onClick={() => login({})}>
-            sign in
-          </button>
-        )}
+          )}
+        </div>
       </header>
 
       <div className="work">
