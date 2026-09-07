@@ -87,8 +87,12 @@ export function LandingScreen() {
           </header>
           <div className="hero-canvas-wrap">
             <HeroFieldCanvas pace={pace} />
-            <span className="hero-field-label buy">BUDGET</span>
-            <span className="hero-field-label sell">EXECUTED</span>
+            <span className="hero-field-label buy" style={{top: "auto", bottom: "10%", left: "4%"}}>
+              0% · START
+            </span>
+            <span className="hero-field-label sell" style={{top: "9%", right: "4%"}}>
+              100% · DONE
+            </span>
             <span className="hero-mid-label">
               SLOPE / PACE {PACE_NAME[pace].toUpperCase()}
             </span>

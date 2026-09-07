@@ -89,6 +89,14 @@ export function HeroFieldCanvas(props: {pace: number}) {
       }
       ctx.globalAlpha = 1;
 
+      // axis micro-labels — what this field even is
+      ctx.fillStyle = "rgba(139, 155, 176, 0.75)";
+      ctx.font = '10px "IBM Plex Mono", monospace';
+      ctx.textAlign = "left";
+      ctx.fillText("% BUDGET EXECUTED", x0, y0 - 8);
+      ctx.textAlign = "right";
+      ctx.fillText("TIME →", x0 + iw, floor + 20);
+
       // floor line + end-of-window tick
       ctx.strokeStyle = "rgba(139, 155, 176, 0.35)";
       ctx.lineWidth = 1;
@@ -122,22 +130,24 @@ export function HeroFieldCanvas(props: {pace: number}) {
       if (pts) {
         for (let ball = 0; ball < 8; ball++) {
           const s = (time * 0.0001 + ball / 8) % 1;
-          for (let trail = 0; trail < 3; trail++) {
-            const ts = Math.max(0, s - trail * 0.014);
+          // trail: blue fading dots behind the ball
+          for (let trail = 1; trail <= 3; trail++) {
+            const ts = Math.max(0, s - trail * 0.016);
             const pt = pts[Math.round(ts * (pts.length - 1))];
-            ctx.globalAlpha = (1 - trail / 3) * 0.5;
-            ctx.fillStyle = selColor;
+            ctx.globalAlpha = (1 - trail / 4) * 0.55;
+            ctx.fillStyle = "#5b8cff";
             ctx.beginPath();
-            ctx.arc(pt.x, pt.y, 2 - trail * 0.5, 0, Math.PI * 2);
+            ctx.arc(pt.x, pt.y, 2.4 - trail * 0.5, 0, Math.PI * 2);
             ctx.fill();
           }
+          // the ball: bright white core, blue halo — pops against every curve
           const pt = pts[Math.round(s * (pts.length - 1))];
-          ctx.globalAlpha = 0.95;
-          ctx.fillStyle = selColor;
-          ctx.shadowColor = selColor;
-          ctx.shadowBlur = 14;
+          ctx.globalAlpha = 1;
+          ctx.fillStyle = "#f4f8ff";
+          ctx.shadowColor = "#5b8cff";
+          ctx.shadowBlur = 16;
           ctx.beginPath();
-          ctx.arc(pt.x, pt.y, 2.4 + Math.sin(time * 0.004 + ball) * 0.5, 0, Math.PI * 2);
+          ctx.arc(pt.x, pt.y, 3.2 + Math.sin(time * 0.004 + ball) * 0.6, 0, Math.PI * 2);
           ctx.fill();
           ctx.shadowBlur = 0;
         }
