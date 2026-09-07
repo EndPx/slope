@@ -360,9 +360,9 @@ export function CreateScreen(props: {onCreated: (id: bigint) => void}) {
             surface="SCHEDULE_PREVIEW"
             axis="CUMULATIVE_BUDGET / TIME"
             legend={[
-              {color: "#ff7a45", label: "FRONT"},
-              {color: "#eae5d6", label: "LINEAR"},
-              {color: "#4fb8a9", label: "BACK"},
+              {color: "#ff8a50", label: "FRONT"},
+              {color: "#e9edf5", label: "LINEAR"},
+              {color: "#45c4d8", label: "BACK"},
             ]}
           />
           <CurvePreview selected={pace} durationSeconds={duration.seconds} />

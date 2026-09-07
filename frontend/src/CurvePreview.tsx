@@ -9,7 +9,7 @@ import {useEffect, useRef} from "react";
 import {Shape, progress, WAD} from "./lib/curve";
 import {Spring} from "./lib/spring";
 
-export const SHAPE_COLOR = ["#ff7a45", "#eae5d6", "#4fb8a9"] as const;
+export const SHAPE_COLOR = ["#ff8a50", "#e9edf5", "#45c4d8"] as const;
 export const SHAPE_NAME = ["Aggressive", "Neutral", "Conservative"] as const;
 const SAMPLES = 120;
 const M = {left: 44, right: 42, top: 14, bottom: 30};
@@ -54,7 +54,7 @@ export function CurvePreview(props: {selected: number; durationSeconds: number; 
 
       // Guides: quiet hairlines; bare mono numbers on the left (the "%" is
       // in the caption, not repeated per tick).
-      ctx.strokeStyle = "#16262c";
+      ctx.strokeStyle = "#141d2c";
       ctx.lineWidth = 1;
       ctx.font = "10px 'IBM Plex Mono', monospace";
       ctx.fillStyle = "#8fa6a3";
@@ -71,7 +71,7 @@ export function CurvePreview(props: {selected: number; durationSeconds: number; 
 
       // The ruler: the dominant element — ticks + time labels.
       const rulerY = h - M.bottom + 0.5;
-      ctx.strokeStyle = "#254048";
+      ctx.strokeStyle = "#223047";
       ctx.beginPath();
       ctx.moveTo(M.left, rulerY);
       ctx.lineTo(M.left + innerW * rulerFrac, rulerY);
@@ -114,6 +114,9 @@ export function CurvePreview(props: {selected: number; durationSeconds: number; 
         ctx.globalAlpha = alphasRef.current[s];
         ctx.lineWidth = 2.25;
         ctx.lineJoin = "round";
+        // the glow: soft halo behind every stroke (the reference's signature)
+        ctx.shadowBlur = 14;
+        ctx.shadowColor = SHAPE_COLOR[s];
         const pts = pointsRef.current[s];
         const last = Math.max(1, Math.floor((pts.length - 1) * reveal));
         ctx.beginPath();
@@ -123,6 +126,7 @@ export function CurvePreview(props: {selected: number; durationSeconds: number; 
           else ctx.lineTo(x, pts[i]);
         }
         ctx.stroke();
+        ctx.shadowBlur = 0;
       }
       ctx.globalAlpha = 1;
     };

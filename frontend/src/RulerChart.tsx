@@ -48,7 +48,7 @@ export function RulerChart(props: {
       ctx.font = "10px 'IBM Plex Mono', monospace";
       ctx.textAlign = "right";
       for (const frac of [0, 0.25, 0.5, 0.75, 1]) {
-        ctx.strokeStyle = "#16262c";
+        ctx.strokeStyle = "#141d2c";
         ctx.beginPath();
         ctx.moveTo(M.left, yAt(frac) + 0.5);
         ctx.lineTo(w - M.right, yAt(frac) + 0.5);
@@ -88,8 +88,10 @@ export function RulerChart(props: {
       const nowX = Math.min(Math.max(xAt(now), M.left), w - M.right);
       const cursorUnix = Math.min(now, start + duration);
       cum.push({unix: cursorUnix, frac: Number(acc) / Number(p.totalBudget)});
-      ctx.strokeStyle = "#eae5d6";
-      ctx.lineWidth = 2;
+      ctx.strokeStyle = "#e9edf5";
+      ctx.lineWidth = 2.25;
+      ctx.shadowBlur = 12;
+      ctx.shadowColor = "#8fb4ff";
       ctx.beginPath();
       cum.forEach((pt, i) => {
         const x = Math.min(Math.max(xAt(pt.unix), M.left), w - M.right);
@@ -98,10 +100,11 @@ export function RulerChart(props: {
         else ctx.lineTo(x, y);
       });
       ctx.stroke();
+      ctx.shadowBlur = 0;
 
       // Direct line labels at the start, no legend boxes.
       ctx.textAlign = "left";
-      ctx.fillStyle = "#eae5d6";
+      ctx.fillStyle = "#e9edf5";
       ctx.fillText("actual", M.left + 8, yAt(0) - 10);
       ctx.fillStyle = SHAPE_COLOR[p.curveShape];
       ctx.fillText("planned", M.left + 8, yAt(0) + 14);
@@ -109,7 +112,7 @@ export function RulerChart(props: {
       // The ruler with event caps: fills solid (paper), skips hollow (amber) —
       // identical size; the cap IS the decision record.
       const rulerY = h - M.bottom + 0.5;
-      ctx.strokeStyle = "#254048";
+      ctx.strokeStyle = "#223047";
       ctx.lineWidth = 1;
       ctx.beginPath();
       ctx.moveTo(M.left, rulerY);
@@ -127,7 +130,7 @@ export function RulerChart(props: {
         }
       };
       for (const s of p.skips) cap(Number(s.timestamp), false, "#d9a441");
-      for (const f of p.fills) cap(Number(f.timestamp), true, "#eae5d6");
+      for (const f of p.fills) cap(Number(f.timestamp), true, "#e9edf5");
 
       // Ruler time labels: start / mid / end.
       ctx.fillStyle = "#8fa6a3";
@@ -147,7 +150,7 @@ export function RulerChart(props: {
       ctx.lineTo(nowX, rulerY);
       ctx.stroke();
       ctx.globalAlpha = 1;
-      ctx.fillStyle = "#eae5d6";
+      ctx.fillStyle = "#e9edf5";
       ctx.textAlign = nowX > w - 90 ? "right" : "left";
       const label =
         now >= start + duration

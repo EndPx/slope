@@ -41,24 +41,21 @@ export function LandingScreen() {
   }, []);
 
   return (
-    <section className="grid gap-8 lg:grid-cols-[1fr_1.1fr] lg:gap-10 items-start">
+    <section className="grid gap-8 lg:grid-cols-[1fr_1.1fr] lg:gap-12 items-center">
       <div>
-        <p className="meta">| EXECUTION BENCH // BASE SEPOLIA TESTNET</p>
-        <h1
-          className="num"
-          style={{fontSize: "clamp(1.7rem, 3vw, 2.4rem)", fontWeight: 600, lineHeight: 1.15, margin: 0}}
-        >
-          Discrete execution curves for scheduled high-volume swaps.
+        <p className="meta">Time-distributed execution</p>
+        <h1 className="display" style={{fontSize: "clamp(2.4rem, 4.6vw, 3.6rem)", lineHeight: 1.02}}>
+          Shape the <span className="grad">schedule.</span>
         </h1>
-        <p className="note" style={{fontSize: "0.9rem", marginTop: "0.9rem", lineHeight: 1.55, maxWidth: 470}}>
-          Slope partitions one large swap order into scheduled slices along configurable geometric paths. Execution
-          disperses price impact across time, inside rails you set.
+        <p className="note" style={{fontSize: "1rem", marginTop: "1.1rem", lineHeight: 1.6, maxWidth: 470}}>
+          Liquidity is no longer a single violent swap. Shape a schedule, publish its geometry, and let every slice
+          fill through it — inside rails you set.
         </p>
-        <button className="act act-ember" style={{marginTop: "1.5rem", maxWidth: 300}} onClick={() => navigate("/create")}>
-          Initialize execution curve
+        <button className="act primary" style={{marginTop: "1.7rem", maxWidth: 260}} onClick={() => navigate("/create")}>
+          Set a schedule
         </button>
-        <p className="note" style={{marginTop: "0.8rem"}}>
-          Live testnet: {stats !== null ? stats.volume.toFixed(0) : "…"} routed across{" "}
+        <p className="note" style={{marginTop: "0.9rem"}}>
+          Live testnet: {stats !== null ? stats.volume.toFixed(0) : "…"} dETH routed across{" "}
           <span className="num">{stats?.fills ?? "…"}</span> fills —{" "}
           <a href={`${M.explorerUrl}/address/${M.slopePosition}`} target="_blank" rel="noreferrer">
             view contract
@@ -67,15 +64,15 @@ export function LandingScreen() {
       </div>
 
       <div className="plot" style={{padding: 0}}>
-        <PlotMeta
-          surface="THREE-CURVE BENCH"
-          axis="CUMULATIVE_FILL / TIME"
-          legend={[
-            {color: "#ff7a45", label: "AGGRESSIVE"},
-            {color: "#eae5d6", label: "NEUTRAL"},
-            {color: "#4fb8a9", label: "CONSERVATIVE"},
-          ]}
-        />
+        <div className="plot-meta" style={{borderBottom: "1px solid var(--hairline-soft)"}}>
+          <span style={{color: "var(--paper)", fontWeight: 700, fontSize: "0.82rem", textTransform: "none", letterSpacing: 0}}>
+            Slope field
+          </span>
+          <span>PARAMETRIC EXECUTION ENGINE &nbsp;//&nbsp; AXIS: CUMULATIVE_FILL / TIME</span>
+          <span className="legend" style={{color: "var(--patina)"}}>
+            <span className="livedot">●</span> ENGINE ACTIVE
+          </span>
+        </div>
         <CurvePreview selected={1} durationSeconds={900} intro />
       </div>
 

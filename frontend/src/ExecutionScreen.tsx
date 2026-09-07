@@ -173,8 +173,8 @@ export function ExecutionScreen(props: {positionId: bigint}) {
           surface="CHART_RECORDER: SCHEDULE_DISPERSION"
           axis="CUMULATIVE_FILL / TIME"
           legend={[
-            {color: "#eae5d6", label: "PLANNED (BENCHMARK)", dashed: false},
-            {color: "#4fb8a9", label: "ACTUAL (EXECUTED)"},
+            {color: "#e9edf5", label: "PLANNED (BENCHMARK)", dashed: false},
+            {color: "#45c4d8", label: "ACTUAL (EXECUTED)"},
           ]}
         />
         <RulerChart
