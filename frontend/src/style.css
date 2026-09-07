@@ -19,7 +19,7 @@
   --patina: #45c4d8;
   --blue: #5b8cff;
   --amber: #e0a845;
-  --hairline: #223047;
+  --hairline: #263650;
   --hairline-soft: #141d2c;
   --radius: 14px;
   --font-ui: "Archivo", system-ui, sans-serif;
@@ -115,6 +115,7 @@ main .livedot {
 
 main nav { display: flex; gap: 0.25rem; }
 main nav a {
+  cursor: pointer;
   padding: 0.42rem 0.15rem 0.52rem;
   background: none;
   border: none;
@@ -127,6 +128,24 @@ main nav a {
 main nav a.active {
   color: var(--paper);
   border-bottom-color: var(--patina);
+}
+main nav a,
+main .act,
+main .seg button,
+main .field,
+main .linklike,
+main table.log tbody tr.clickable td {
+  transition: color 160ms ease, border-color 160ms ease, background-color 160ms ease, box-shadow 160ms ease;
+}
+@media (prefers-reduced-motion: reduce) {
+  main nav a,
+  main .act,
+  main .seg button,
+  main .field,
+  main .linklike,
+  main table.log tbody tr.clickable td {
+    transition: none;
+  }
 }
 main nav a:hover { color: var(--paper); }
 
@@ -216,6 +235,7 @@ main .field[aria-invalid="true"] {
 main .seg { display: flex; gap: 0.4rem; }
 main .seg button {
   flex: 1;
+  cursor: pointer;
   padding: 0.55rem 0.4rem;
   background: var(--ink);
   border: 1px solid var(--hairline);
@@ -243,6 +263,7 @@ main .dot {
 
 main .act {
   display: block;
+  cursor: pointer;
   width: 100%;
   padding: 0.66rem 1.1rem;
   background: var(--panel-2);
