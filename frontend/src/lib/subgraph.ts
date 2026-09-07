@@ -9,10 +9,11 @@ const QUERY_URL =
   "https://api.studio.thegraph.com/query/1758808/slope-base-sepolia/v0.0.2";
 const API_KEY = (import.meta.env.VITE_GRAPH_API_KEY as string | undefined) ?? "";
 
-/** On HTTP 429 the whole app backs off for a minute: several screens poll,
- *  and hammering a rate-limited key only extends the lockout. Callers keep
- *  their last data and show the retry message. */
+/** On HTTP 429 the whole app backs off: this is the display layer — the
+ *  keeper's execution budget matters more than our refresh rate. Callers
+ *  keep their last data and show the retry message. */
 let cooldownUntil = 0;
+const RATE_COOLDOWN_MS = 120_000;
 
 export async function gql<T>(query: string): Promise<T> {
   if (!API_KEY) throw new Error("VITE_GRAPH_API_KEY missing — the UI consumes live subgraph data; set it in .env");
@@ -25,8 +26,8 @@ export async function gql<T>(query: string): Promise<T> {
     body: JSON.stringify({query}),
   });
   if (response.status === 429) {
-    cooldownUntil = Date.now() + 60_000;
-    throw new Error("subgraph rate limited (HTTP 429) — backing off 60 s");
+    cooldownUntil = Date.now() + RATE_COOLDOWN_MS;
+    throw new Error("subgraph rate limited (HTTP 429) — backing off 120 s");
   }
   if (!response.ok) throw new Error(`subgraph HTTP ${response.status}`);
   const body: any = await response.json();

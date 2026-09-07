@@ -53,7 +53,7 @@ export function ExecutionScreen(props: {positionId: bigint}) {
       }
     };
     load();
-    const stopPolling = startPolling(load, 10_000);
+    const stopPolling = startPolling(load, 20_000);
     const clock = setInterval(() => setNow(Math.floor(Date.now() / 1000)), 1000);
     return () => {
       stop = true;

@@ -96,11 +96,14 @@ const inFlight = new Map<string, Promise<void>>();
 const failures = new Map<string, number>();
 const PARK_AFTER = 3;
 
-/** HTTP 429 back-off: the browser, this keeper, and any other consumer
- *  share one Studio key. Hammering a rate-limited key only extends the
- *  lockout, so after a 429 the keeper skips ticks for a minute — still
- *  fail-closed, still loud, just not stampeding. */
+/** HTTP 429 back-off, progressive: 1 min -> 5 min -> 15 min (capped). A
+ *  DAILY quota does not recover in one minute, so retrying every minute
+ *  would just burn what is left of it. One log line on entering the
+ *  rate-limited state, one on recovery — never per tick. */
+const RATE_BACKOFF_STEPS = [60, 300, 900];
 let rateLimitedUntil = 0;
+let rateAttempt = 0;
+let wasRateLimited = false;
 
 const SKIP_ABI = [
   {
@@ -272,7 +275,7 @@ async function tick(): Promise<void> {
   // execution, and the reason is logged loudly. Never fall back to iterating
   // the keystore: that would make the live-Graph-data claim false.
   if (Date.now() < rateLimitedUntil) {
-    console.log("[rate-limit] subgraph 429 back-off active — skipping this tick, no execution");
+    // silence while waiting out the back-off — entering it was already logged
     return;
   }
   let snapshot;
@@ -281,12 +284,20 @@ async function tick(): Promise<void> {
   } catch (e) {
     const message = String((e as Error)?.message ?? e);
     if (message.includes("429")) {
-      rateLimitedUntil = Date.now() + 60_000;
-      console.error("subgraph rate limited (429) — backing off 60 s, no execution, no fallback path");
+      const backoff = RATE_BACKOFF_STEPS[Math.min(rateAttempt, RATE_BACKOFF_STEPS.length - 1)];
+      rateAttempt += 1;
+      rateLimitedUntil = Date.now() + backoff * 1000;
+      wasRateLimited = true;
+      console.error(`subgraph rate limited (429) — backing off ${backoff} s, no execution, no fallback path`);
       return;
     }
     console.error("SUBGRAPH UNREACHABLE — no execution this tick (no fallback path):", message.slice(0, 300));
     return;
+  }
+  if (wasRateLimited) {
+    wasRateLimited = false;
+    rateAttempt = 0;
+    console.log("[rate-limit] recovered — resuming subgraph polling");
   }
 
   // Staleness report (SPEC section 5: indexing lag is why execution-critical
@@ -366,5 +377,5 @@ for (const [id, e] of Object.entries(loadKeystore())) {
 }
 for (;;) {
   await tick();
-  await new Promise((r) => setTimeout(r, 15_000));
+  await new Promise((r) => setTimeout(r, Number(cfg.pollIntervalSeconds) * 1000));
 }

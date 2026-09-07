@@ -38,6 +38,22 @@ The keeper is the subgraph's production consumer (track requirement: meaningful 
 
 **No-fallback rule**: if the subgraph is unreachable, the tick is skipped and logged (`SUBGRAPH UNREACHABLE — no execution this tick (no fallback path)`); the keeper never substitutes local data, because that would invalidate the live-Graph-consumption claim. The `_meta` block is compared against the chain head every tick and a lag above 50 blocks logs an explicit staleness warning — quantifying exactly why execution-critical state is re-verified on-chain (SPEC section 5).
 
+## Query Budget (dev key)
+
+The Studio dev endpoint allows roughly 3,000 queries/day — the quota is
+shared by every consumer of the key (keeper, frontend, ad-hoc scripts).
+Sustainable settings shipped in the repo:
+
+- **Keeper**: polls every `KEEPER_POLL_INTERVAL_SECONDS` (default 30 s ≈
+  2,880 queries/day), backs off progressively on HTTP 429 (1 → 5 → 15 min,
+  capped), and stays fail-closed the whole time. Set the env to 60 s on
+  quiet days.
+- **Frontend**: 20–30 s per screen, pauses while the tab is hidden, and
+  backs off 120 s on 429. The live status chip polls once a minute.
+
+For demos: check the remaining quota before recording, and stop the keeper
+(`Ctrl+C`) when it is not needed — no keeper, no fills.
+
 ## Redeploying
 
 ```sh

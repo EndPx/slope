@@ -54,7 +54,7 @@ function LiveStatus() {
       if (!stop) setKeeper(k);
     };
     load();
-    const stopPolling = startPolling(load, 15_000);
+    const stopPolling = startPolling(load, 60_000);
     return () => {
       stop = true;
       stopPolling();
