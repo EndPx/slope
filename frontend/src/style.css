@@ -26,33 +26,36 @@
 
 body {
   margin: 0;
-  min-height: 100vh;
   background: var(--ink);
   color: var(--paper);
   font-family: var(--font-ui);
   font-weight: 500;
 }
 
+/* Docked app frame: chrome on top, scrolling work area in the middle,
+ * footer pinned to the bottom edge — at the layout level, so it holds for
+ * every route. Scrolling happens INSIDE .work; nothing hides behind the
+ * header or footer. */
+main {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  height: 100dvh;
+}
+
 /* Every rule below is scoped under `main` on purpose: the Privy login modal
  * renders into the page DOM and bare element selectors would bleed into it. */
 
 main .chrome {
-  position: sticky;
-  top: 0;
+  position: relative;
   z-index: 10;
+  flex: none;
   display: flex;
   align-items: center;
   gap: 1.5rem;
   padding: 0.65rem 1.25rem;
-  background: color-mix(in srgb, var(--ink) 72%, transparent);
-  backdrop-filter: blur(14px);
+  background: var(--ink); /* solid: mono numbers scrolling underneath must not read through */
   border-bottom: 1px solid var(--hairline-soft);
-}
-@supports (background: color-mix(in srgb, red 50%, blue)) {
-  /* supported: keep the translucent chrome */
-}
-@supports not (backdrop-filter: blur(1px)) {
-  main .chrome { background: var(--ink); }
 }
 
 main .wordmark {
@@ -93,9 +96,14 @@ main nav a.active {
 main nav a:hover { color: var(--paper); }
 
 main .work {
+  flex: 1 1 auto;
+  min-height: 0; /* lets the flex item actually scroll instead of stretching */
+  overflow-y: auto;
   max-width: 1100px;
+  width: 100%;
   margin: 0 auto;
   padding: 1.75rem 1.25rem 2.5rem;
+  box-sizing: border-box;
 }
 
 main .display {
@@ -227,9 +235,8 @@ main .empty {
 }
 
 main footer.attribution {
-  max-width: 1100px;
-  margin: 2.5rem auto 0;
-  padding: 0.7rem 1.25rem 0;
+  flex: none;
+  background: var(--ink);
   border-top: 1px solid var(--hairline-soft);
   box-sizing: border-box;
   display: flex;
@@ -237,10 +244,11 @@ main footer.attribution {
   align-items: baseline;
   gap: 1rem;
   flex-wrap: wrap;
+  padding: 0.3rem 1.25rem;
   color: #5c7370;
-  font: 400 0.65rem var(--font-ui);
+  font: 400 0.62rem var(--font-ui);
 }
-main footer.attribution code { font: 400 0.72rem var(--font-num); }
+main footer.attribution code { font: 400 0.62rem var(--font-num); }
 main .linklike {
   background: none;
   border: none;
