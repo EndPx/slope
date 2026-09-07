@@ -15,6 +15,7 @@ import {SHAPE_COLOR, SHAPE_NAME} from "./CurvePreview";
 import {fetchPosition, type Position} from "./lib/subgraph";
 import {fmtClock, fmtDuration, fmtToken, reasonCopy} from "./lib/format";
 import {usePageTitle} from "./lib/usePageTitle";
+import {startPolling} from "./lib/poll";
 
 const M = MANIFEST as {slopePosition: `0x${string}`; chainId: number; publicRpcUrl: string; explorerUrl: string};
 const KEEPER_URL = "http://localhost:8787";
@@ -51,11 +52,11 @@ export function ExecutionScreen(props: {positionId: bigint}) {
       }
     };
     load();
-    const poll = setInterval(load, 10_000);
+    const stopPolling = startPolling(load, 10_000);
     const clock = setInterval(() => setNow(Math.floor(Date.now() / 1000)), 1000);
     return () => {
       stop = true;
-      clearInterval(poll);
+      stopPolling();
       clearInterval(clock);
     };
   }, [props.positionId]);

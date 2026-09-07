@@ -22,6 +22,7 @@ import {ActivityScreen} from "./ActivityScreen";
 import {FaucetPanel} from "./FaucetPanel";
 import {StatusBar} from "./StatusBar";
 import {fetchHeadBlock} from "./lib/subgraph";
+import {startPolling} from "./lib/poll";
 import {usePageTitle} from "./lib/usePageTitle";
 import MANIFEST from "./manifest.json";
 
@@ -53,10 +54,10 @@ function LiveStatus() {
       if (!stop) setKeeper(k);
     };
     load();
-    const t = setInterval(load, 15_000);
+    const stopPolling = startPolling(load, 15_000);
     return () => {
       stop = true;
-      clearInterval(t);
+      stopPolling();
     };
   }, []);
 

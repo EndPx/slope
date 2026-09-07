@@ -8,6 +8,7 @@ import {useEffect, useState} from "react";
 import {useNavigate} from "react-router-dom";
 import {fetchPositions, type Position} from "./lib/subgraph";
 import {usePageTitle} from "./lib/usePageTitle";
+import {startPolling} from "./lib/poll";
 import {fmtBps, fmtToken, fmtVwap} from "./lib/format";
 import {SHAPE_COLOR, SHAPE_NAME} from "./CurvePreview";
 
@@ -31,10 +32,10 @@ export function PerformanceScreen() {
       }
     };
     load();
-    const t = setInterval(load, 15_000);
+    const stopPolling = startPolling(load, 15_000);
     return () => {
       stop = true;
-      clearInterval(t);
+      stopPolling();
     };
   }, []);
 

@@ -11,6 +11,7 @@ import {fmtToken} from "./lib/format";
 import {SHAPE_COLOR, SHAPE_NAME} from "./CurvePreview";
 import {StatusBar} from "./StatusBar";
 import {usePageTitle} from "./lib/usePageTitle";
+import {startPolling} from "./lib/poll";
 
 export function PositionsScreen() {
   usePageTitle("Positions");
@@ -37,10 +38,10 @@ export function PositionsScreen() {
       }
     };
     load();
-    const t = setInterval(load, 15_000);
+    const stopPolling = startPolling(load, 15_000);
     return () => {
       stop = true;
-      clearInterval(t);
+      stopPolling();
     };
   }, []);
 

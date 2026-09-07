@@ -10,6 +10,7 @@ import {baseSepolia} from "viem/chains";
 import MANIFEST from "./manifest.json";
 import {fetchSummary} from "./lib/subgraph";
 import {fmtToken} from "./lib/format";
+import {startPolling} from "./lib/poll";
 
 const M = MANIFEST as {publicRpcUrl: string};
 
@@ -34,10 +35,10 @@ export function StatusBar() {
       }
     };
     load();
-    const t = setInterval(load, 15_000);
+    const stopPolling = startPolling(load, 15_000);
     return () => {
       stop = true;
-      clearInterval(t);
+      stopPolling();
     };
   }, []);
 

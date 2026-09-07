@@ -9,6 +9,7 @@ import {fetchPositions, type Position} from "./lib/subgraph";
 import {fmtClock, fmtToken, reasonCopy} from "./lib/format";
 import {StatusBar} from "./StatusBar";
 import {usePageTitle} from "./lib/usePageTitle";
+import {startPolling} from "./lib/poll";
 import MANIFEST from "./manifest.json";
 
 const M = MANIFEST as {explorerUrl: string};
@@ -94,10 +95,10 @@ export function ActivityScreen() {
       }
     };
     load();
-    const t = setInterval(load, 15_000);
+    const stopPolling = startPolling(load, 15_000);
     return () => {
       stop = true;
-      clearInterval(t);
+      stopPolling();
     };
   }, []);
 
