@@ -31,15 +31,15 @@ body {
    * grid every 44px and a major one every 220px, both derived from Ink.
    * Solid panels sit on top; exposed ink reads as the desk. */
   background-image:
-    linear-gradient(to right, color-mix(in srgb, var(--hairline) 22%, transparent) 1px, transparent 1px),
-    linear-gradient(to bottom, color-mix(in srgb, var(--hairline) 22%, transparent) 1px, transparent 1px),
-    linear-gradient(to right, color-mix(in srgb, var(--hairline) 40%, transparent) 1px, transparent 1px),
-    linear-gradient(to bottom, color-mix(in srgb, var(--hairline) 40%, transparent) 1px, transparent 1px);
+    linear-gradient(to right, color-mix(in srgb, var(--hairline) 30%, transparent) 1px, transparent 1px),
+    linear-gradient(to bottom, color-mix(in srgb, var(--hairline) 30%, transparent) 1px, transparent 1px),
+    linear-gradient(to right, color-mix(in srgb, var(--hairline) 55%, transparent) 1px, transparent 1px),
+    linear-gradient(to bottom, color-mix(in srgb, var(--hairline) 55%, transparent) 1px, transparent 1px);
   background-size:
-    44px 44px,
-    44px 44px,
-    220px 220px,
-    220px 220px;
+    20px 20px,
+    20px 20px,
+    100px 100px,
+    100px 100px;
   background-attachment: fixed;
   color: var(--paper);
   font-family: var(--font-ui);
@@ -105,9 +105,9 @@ main .chrome-right {
 }
 
 main .wordmark {
-  font-size: 1.05rem;
-  font-weight: 700;
-  letter-spacing: -0.02em;
+  font: 700 0.92rem var(--font-num);
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
   color: var(--paper);
   text-decoration: none;
 }
@@ -125,18 +125,21 @@ main .livedot {
 
 main nav { display: flex; gap: 0.25rem; }
 main nav a {
-  padding: 0.35rem 0.7rem;
+  padding: 0.3rem 0.55rem;
   background: none;
-  border: 1px solid transparent;
-  border-radius: 3px;
+  border: 1px dashed var(--hairline);
+  border-radius: 2px;
   color: var(--muted);
-  font: 600 0.82rem var(--font-ui);
+  font: 500 0.64rem var(--font-num);
+  text-transform: uppercase;
+  letter-spacing: 0.09em;
   cursor: pointer;
   text-decoration: none;
 }
 main nav a.active {
   color: var(--paper);
-  border-color: var(--hairline);
+  border-style: solid;
+  border-color: var(--muted);
   background: var(--panel);
 }
 main nav a:hover { color: var(--paper); }
@@ -159,10 +162,37 @@ main .display {
 }
 
 main .label {
-  font: 600 0.8rem var(--font-ui);
+  font: 500 0.62rem var(--font-num);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
   color: var(--muted);
   margin: 0 0 0.4rem;
 }
+
+/* system meta line: | PREFIX // DETAIL — real facts, never decoration */
+main .meta {
+  font: 500 0.6rem var(--font-num);
+  text-transform: uppercase;
+  letter-spacing: 0.09em;
+  color: var(--muted);
+  margin: 0 0 0.55rem;
+}
+
+/* chip: bordered mono tag for statuses, paces, event kinds */
+main .chip {
+  display: inline-block;
+  font: 500 0.6rem var(--font-num);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  padding: 0.12rem 0.4rem;
+  border: 1px solid var(--hairline);
+  border-radius: 2px;
+  color: var(--paper);
+}
+main .chip.patina { border-color: var(--patina); color: var(--patina); }
+main .chip.ember { border-color: var(--ember); color: var(--ember); }
+main .chip.paper { border-color: var(--muted); }
+main .chip.muted { color: var(--muted); border-color: var(--hairline-soft); }
 
 main .field {
   display: block;
@@ -216,13 +246,24 @@ main .dot {
 main .act {
   display: block;
   width: 100%;
-  padding: 0.7rem 1rem;
+  padding: 0.62rem 1rem;
   background: var(--panel-2);
   color: var(--paper);
   border: 1px solid var(--hairline);
   border-radius: 3px;
-  font: 600 0.95rem var(--font-ui);
+  font: 600 0.72rem var(--font-num);
+  text-transform: uppercase;
+  letter-spacing: 0.09em;
   cursor: pointer;
+}
+main .act-ember {
+  background: transparent;
+  border: 1px dashed var(--ember);
+  color: var(--ember);
+}
+main .act-ember:hover:not(:disabled) {
+  border-style: solid;
+  background: color-mix(in srgb, var(--ember) 8%, transparent);
 }
 main .act:hover:not(:disabled) { border-color: var(--patina); }
 main .act:active:not(:disabled) { transform: translateY(1px); }
@@ -339,7 +380,9 @@ main table.log {
 main table.log th {
   text-align: left;
   color: var(--muted);
-  font: 600 0.7rem var(--font-ui);
+  font: 500 0.6rem var(--font-num);
+  text-transform: uppercase;
+  letter-spacing: 0.09em;
   padding: 0.4rem 0.6rem;
   border-bottom: 1px solid var(--hairline);
 }
@@ -390,6 +433,7 @@ main .livestatus .livedot {
   margin-right: 0;
 }
 main .livestatus.ok .livedot { color: var(--patina); }
+main .livestatus .ok { color: var(--patina); }
 main .livestatus.warn .livedot { color: var(--amber); }
 
 main .chrome-right {
@@ -430,21 +474,27 @@ main .account .account-out:hover { color: var(--ember); }
 
 main .statusbar {
   display: flex;
-  gap: 1.5rem;
+  gap: 2.2rem;
   flex-wrap: wrap;
   padding: 0.55rem 0.9rem;
   background: var(--panel);
   border: 1px solid var(--hairline-soft);
   border-radius: 3px;
   color: var(--muted);
-  font: 500 0.74rem var(--font-ui);
+  font: 500 0.58rem var(--font-num);
+  text-transform: uppercase;
+  letter-spacing: 0.09em;
 }
 main .statusbar b {
-  font: 500 0.74rem var(--font-num);
+  display: block;
+  font: 500 0.86rem var(--font-num);
+  text-transform: none;
+  letter-spacing: 0;
   color: var(--paper);
-  margin-left: 0.3rem;
+  margin-top: 0.15rem;
 }
 main .statusbar b.warn { color: var(--amber); }
+main .statusbar b.ok { color: var(--patina); }
 
 main .bench {
   border: 1px solid var(--hairline-soft);
@@ -501,3 +551,41 @@ main .bench-meta {
 @media (prefers-reduced-motion: reduce) {
   main * { transition: none !important; }
 }
+
+main .plot-meta {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 1rem;
+  flex-wrap: wrap;
+  padding: 0.45rem 0.6rem 0.4rem;
+  border-bottom: 1px solid var(--hairline-soft);
+  font: 500 0.58rem var(--font-num);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--muted);
+}
+main .plot-meta .legend { display: flex; gap: 0.9rem; text-transform: none; }
+main .plot-meta .legend span { color: var(--muted); }
+main .plot-meta .legend i {
+  display: inline-block;
+  width: 14px;
+  height: 2px;
+  vertical-align: 3px;
+  margin-right: 0.35em;
+}
+
+/* benchmark axis header: drag left | zero | alpha right (mock screen 5) */
+main .bench-head {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  font: 500 0.58rem var(--font-num);
+  text-transform: uppercase;
+  letter-spacing: 0.09em;
+  color: var(--muted);
+}
+main .bench-head span:nth-child(1) { text-align: right; padding-right: 0.6rem; }
+main .bench-head span:nth-child(2) { text-align: center; }
+main .bench-head span:nth-child(3) { text-align: left; padding-left: 0.6rem; }
+main td.pos { color: var(--patina); }
+main td.neg { color: var(--ember); }

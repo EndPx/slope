@@ -12,6 +12,7 @@ import {baseSepolia} from "viem/chains";
 import MANIFEST from "./manifest.json";
 import {RulerChart} from "./RulerChart";
 import {SHAPE_COLOR, SHAPE_NAME} from "./CurvePreview";
+import {PlotMeta} from "./PlotMeta";
 import {fetchPosition, type Position} from "./lib/subgraph";
 import {fmtClock, fmtDuration, fmtToken, reasonCopy} from "./lib/format";
 import {usePageTitle} from "./lib/usePageTitle";
@@ -167,7 +168,16 @@ export function ExecutionScreen(props: {positionId: bigint}) {
         </span>
       </div>
 
-      <RulerChart
+      <div className="plot" style={{padding: 0}}>
+        <PlotMeta
+          surface="CHART_RECORDER: SCHEDULE_DISPERSION"
+          axis="CUMULATIVE_FILL / TIME"
+          legend={[
+            {color: "#eae5d6", label: "PLANNED (BENCHMARK)", dashed: false},
+            {color: "#4fb8a9", label: "ACTUAL (EXECUTED)"},
+          ]}
+        />
+        <RulerChart
         startTimestamp={position.startTimestamp}
         duration={position.duration}
         totalBudget={position.totalBudget}
@@ -175,7 +185,8 @@ export function ExecutionScreen(props: {positionId: bigint}) {
         isActive={position.isActive}
         fills={position.fills}
         skips={position.skips}
-      />
+        />
+      </div>
 
       <div className="strip">
         <div className="grow">
@@ -244,7 +255,9 @@ export function ExecutionScreen(props: {positionId: bigint}) {
                 ev.kind === "fill" ? (
                   <tr key={ev.fill.id}>
                     <td className="num">{fmtClock(ev.fill.timestamp)}</td>
-                    <td>Filled</td>
+                    <td>
+                      <span className="chip patina">Filled</span>
+                    </td>
                     <td className="num r">{fmtToken(ev.fill.amountIn, 18)} dETH</td>
                     <td className="num r">{fmtToken(ev.fill.amountOut, 6)} dUSD</td>
                     <td className="num r">{fmtToken(ev.fill.executionPrice, 18, 2)}</td>
@@ -262,7 +275,8 @@ export function ExecutionScreen(props: {positionId: bigint}) {
                   <tr key={ev.skip.id} className="held">
                     <td className="num">{fmtClock(ev.skip.timestamp)}</td>
                     <td className="held-cell" colSpan={5}>
-                      <span className="held-head">Held — {reasonCopy(ev.skip.reason)[0]}</span>{" "}
+                      <span className="chip ember">Held</span>{" "}
+                      <span className="held-head">{reasonCopy(ev.skip.reason)[0]}</span>{" "}
                       <span className="note">{reasonCopy(ev.skip.reason)[1]}</span>{" "}
                       <span className="num held-enum">{ev.skip.reason}</span>
                     </td>

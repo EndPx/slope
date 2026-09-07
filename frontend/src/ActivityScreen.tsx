@@ -125,15 +125,16 @@ export function ActivityScreen() {
   return (
     <section className="flex flex-col gap-5">
       <StatusBar />
+      <p className="meta">| CONTEXT // PROTOCOL EVENT STREAM &nbsp;|&nbsp; FEED: SLOPE_BASE_SEPOLIA</p>
       <div className="flex items-center gap-3 flex-wrap">
-        <h2 className="display" style={{fontSize: "1.6rem"}}>
+        <h2 className="display num" style={{fontSize: "1.4rem", fontWeight: 600, letterSpacing: 0}}>
           Activity
         </h2>
         <span className="note num" style={{marginLeft: "auto"}}>
           {events.length} indexed events, {counts.filled} fills, {counts.held} holds
         </span>
         {events.length > 0 && (
-          <button className="act" style={{width: "auto", padding: "0.3rem 0.8rem"}} onClick={downloadCsv}>
+          <button className="act act-ember" style={{width: "auto", padding: "0.35rem 0.9rem"}} onClick={downloadCsv}>
             Export CSV
           </button>
         )}
@@ -172,10 +173,14 @@ export function ActivityScreen() {
               <tr key={`${e.kind}-${e.positionId}-${i}`} className={e.kind === "held" ? "held" : ""}>
                 <td className="num">{fmtClock(e.at)}</td>
                 <td>
-                  {e.kind === "held" ? <span className="held-head">{e.label}</span> : e.label}
+                  <span
+                    className={`chip ${e.kind === "filled" ? "patina" : e.kind === "held" ? "ember" : e.kind === "created" ? "paper" : "muted"}`}
+                  >
+                    {e.label}
+                  </span>
                 </td>
                 <td className="num">#{e.positionId}</td>
-                <td>{e.flow ?? "—"}</td>
+                <td className={e.kind === "held" ? "neg" : e.kind === "filled" ? "pos" : ""}>{e.flow ?? "—"}</td>
                 <td className="num r">{e.block.toString()}</td>
                 <td className="r">
                   {e.tx ? (

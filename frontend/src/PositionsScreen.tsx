@@ -52,9 +52,12 @@ export function PositionsScreen() {
     <section className="flex flex-col gap-5">
       <StatusBar />
       <div className="flex items-center gap-3 flex-wrap">
-        <h2 className="display" style={{fontSize: "1.6rem"}}>
-          Schedules
-        </h2>
+        <div>
+          <p className="meta">| OWNERSHIP RESOLVED FROM THE CONNECTED WALLET</p>
+          <h2 className="display num" style={{fontSize: "1.4rem", fontWeight: 600, letterSpacing: 0}}>
+            Schedules
+          </h2>
+        </div>
         {ownExists && (
           <div className="seg" style={{marginLeft: "auto", maxWidth: 220}}>
             <button aria-pressed={filter === "all"} onClick={() => setFilter("all")}>
@@ -123,14 +126,27 @@ export function PositionsScreen() {
               const status = !p.isActive ? (p.executedAmount >= p.totalBudget ? "completed" : "cancelled") : "live";
               return (
                 <tr key={p.id} tabIndex={0} className="clickable" onClick={() => navigate(`/positions/${p.id}`)} onKeyDown={(e) => e.key === "Enter" && navigate(`/positions/${p.id}`)}>
-                  <td className="num">#{p.id}{mine ? " (yours)" : ""}</td>
-                  <td>
-                    <span className="dot" style={{"--seg-color": SHAPE_COLOR[p.curveShape]} as React.CSSProperties} />
-                    {SHAPE_NAME[p.curveShape]}
+                  <td className="num">
+                    <span className="chip">#{p.id}</span>
+                    {mine ? " yours" : ""}
                   </td>
-                  <td className={status === "live" ? "ok" : ""}>{status}</td>
-                  <td className="num r">{fmtToken(p.executedAmount, 18)} dETH</td>
-                  <td className="num r">{pct.toFixed(1)}%</td>
+                  <td>
+                    <span className={`chip ${p.curveShape === 0 ? "ember" : p.curveShape === 2 ? "patina" : "paper"}`}>
+                      {SHAPE_NAME[p.curveShape]}
+                    </span>
+                  </td>
+                  <td>
+                    <span className={`chip ${status === "live" ? "patina" : "muted"}`}>{status}</span>
+                  </td>
+                  <td className="num r" style={{minWidth: 130}}>
+                    <div style={{display: "flex", alignItems: "center", gap: 8, justifyContent: "flex-end"}}>
+                      <div style={{flex: 1, height: 4, background: "var(--hairline-soft)", borderRadius: 2, overflow: "hidden"}}>
+                        <div style={{width: `${Math.min(100, pct)}%`, height: "100%", background: "var(--patina)"}} />
+                      </div>
+                      <span>{pct.toFixed(0)}%</span>
+                    </div>
+                  </td>
+                  <td className="num r">{fmtToken(p.executedAmount, 18)} / {fmtToken(p.totalBudget, 18)}</td>
                   <td className="num r">{p.fills.length}</td>
                 </tr>
               );

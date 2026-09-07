@@ -8,6 +8,7 @@ import {useEffect, useState} from "react";
 import {useNavigate} from "react-router-dom";
 import {fetchPositions, type Position} from "./lib/subgraph";
 import {usePageTitle} from "./lib/usePageTitle";
+import {StatusBar} from "./StatusBar";
 import {startPolling} from "./lib/poll";
 import {fmtBps, fmtToken, fmtVwap} from "./lib/format";
 import {SHAPE_COLOR, SHAPE_NAME} from "./CurvePreview";
@@ -57,13 +58,15 @@ export function PerformanceScreen() {
 
   return (
     <section className="flex flex-col gap-5">
+      <StatusBar />
       <div>
-        <h2 className="display" style={{fontSize: "1.6rem"}}>
-          Performance
+        <p className="meta">| METRICS AGGREGATED // BENCHMARK: LINEAR AT OBSERVED PRICES</p>
+        <h2 className="display num" style={{fontSize: "1.3rem", fontWeight: 600, letterSpacing: 0}}>
+          Execution benchmark: schedule delta vs linear TWAP
         </h2>
         <p className="note">
-          Realized execution versus a plain linear schedule at the same observed prices — the size-and-timing effect,
-          isolated from the price path. Negative numbers appear as they are.
+          Net basis point gain (patina) versus slippage loss (ember) across executed schedules. Negative numbers
+          appear as they are.
         </p>
       </div>
 
@@ -75,6 +78,13 @@ export function PerformanceScreen() {
         </div>
       )}
 
+      {graded.length > 0 && (
+        <div className="bench-head num">
+          <span>SLIPPAGE DRAG / COST (−BPS)</span>
+          <span>0.00 ZERO LINE</span>
+          <span>POSITIVE ALPHA / SAVED (+BPS)</span>
+        </div>
+      )}
       <div className="bench">
         {graded.map((p) => {
           const bps = Number(p.benchmark!.improvementBps);
@@ -119,9 +129,8 @@ export function PerformanceScreen() {
           );
         })}
         {graded.length > 0 && (
-          <p className="note" style={{marginTop: "0.2rem"}}>
-            Zero line = the linear schedule's outcome at the same prices. Left of it, the curve lost; right of it, it
-            beat the plain schedule.
+          <p className="note num" style={{marginTop: "0.2rem"}}>
+            DOMAIN: [−{maxAbs.toFixed(1)}, +{maxAbs.toFixed(1)} BPS] &nbsp;|&nbsp; NORMALIZATION: LINEAR CARTESIAN SNAP
           </p>
         )}
       </div>
@@ -150,7 +159,7 @@ export function PerformanceScreen() {
                 <td className="num r">{fmtToken(p.executedAmount, 18)} dETH</td>
                 <td className="num r">{b ? fmtVwap(b.actualVWAP) : "—"}</td>
                 <td className="num r">{b?.twapVWAP ? fmtVwap(b.twapVWAP) : "—"}</td>
-                <td className={`num r ${b?.improvementBps && Number(b.improvementBps) < 0 ? "err" : "ok"}`}>
+                <td className={`num r ${b?.improvementBps && Number(b.improvementBps) < 0 ? "neg" : "pos"}`}>
                   {b ? fmtBps(b.improvementBps) : "—"}
                 </td>
               </tr>

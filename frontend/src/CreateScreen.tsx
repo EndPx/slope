@@ -10,6 +10,7 @@ import {createWalletClient, custom, encodeFunctionData, formatUnits, http, parse
 import {baseSepolia} from "viem/chains";
 import MANIFEST from "./manifest.json";
 import {CurvePreview, SHAPE_COLOR, SHAPE_NAME} from "./CurvePreview";
+import {PlotMeta} from "./PlotMeta";
 import {useCustody} from "./lib/useCustody";
 import {estimateSchedule} from "./lib/schedule-estimate";
 import {fmtToken} from "./lib/format";
@@ -222,8 +223,10 @@ export function CreateScreen(props: {onCreated: (id: bigint) => void}) {
     <section className="grid gap-8 lg:grid-cols-[400px_1fr] lg:gap-10">
       <div className="flex flex-col gap-5">
         <div>
-          <h2 className="display">Set a schedule</h2>
-          <p className="note">Split one large swap across time, on your terms.</p>
+          <p className="meta">| ORDER MATRIX // ESTIMATED LOCALLY — NO CHAIN CALLS</p>
+          <h2 className="display num" style={{fontSize: "1.3rem", fontWeight: 600, letterSpacing: 0}}>
+            Schedule parameter matrix
+          </h2>
         </div>
 
         <div>
@@ -325,8 +328,8 @@ export function CreateScreen(props: {onCreated: (id: bigint) => void}) {
         <div className="mt-1">
           {authenticated ? (
             createdId === null ? (
-              <button className="act primary" disabled={!inputsValid || busy} onClick={createSchedule}>
-                {busy ? "Working…" : "Create schedule"}
+              <button className="act act-ember" disabled={!inputsValid || busy} onClick={createSchedule}>
+                {busy ? "Working…" : "Deploy execution schedule"}
               </button>
             ) : (
               <button className="act primary" disabled={busy} onClick={delegateExecution}>
@@ -352,14 +355,22 @@ export function CreateScreen(props: {onCreated: (id: bigint) => void}) {
       </div>
 
       <div>
-        <p className="label">
-          Your pace, on one ruler — {SHAPE_NAME[pace]} is bold
-        </p>
-        <CurvePreview selected={pace} durationSeconds={duration.seconds} />
+        <div className="plot" style={{padding: 0}}>
+          <PlotMeta
+            surface="SCHEDULE_PREVIEW"
+            axis="CUMULATIVE_BUDGET / TIME"
+            legend={[
+              {color: "#ff7a45", label: "FRONT"},
+              {color: "#eae5d6", label: "LINEAR"},
+              {color: "#4fb8a9", label: "BACK"},
+            ]}
+          />
+          <CurvePreview selected={pace} durationSeconds={duration.seconds} />
+        </div>
         {estimate.slices > 0 && (
           <p className="note num">
-            ≈ {estimate.slices} slices, about {fmtToken(estimate.avgSliceRaw, 18, 3)} dETH each, every ~
-            {estimate.intervalSeconds ?? duration.seconds}s
+            TRANCHE-COUNT: {estimate.slices} &nbsp;|&nbsp; MEAN SLICE: {fmtToken(estimate.avgSliceRaw, 18, 3)} dETH
+            &nbsp;|&nbsp; CADENCE: ~{estimate.intervalSeconds ?? duration.seconds}s
           </p>
         )}
         <p className="note">

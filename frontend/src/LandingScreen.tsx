@@ -8,6 +8,7 @@
 import {useEffect, useState} from "react";
 import {useNavigate} from "react-router-dom";
 import {CurvePreview} from "./CurvePreview";
+import {PlotMeta} from "./PlotMeta";
 import {fetchPositions} from "./lib/subgraph";
 import {usePageTitle} from "./lib/usePageTitle";
 
@@ -16,7 +17,7 @@ const M = {slopePosition: "0xC7c6FaD1C2A0e8961E34D40c39C059ECE6dBB8Cc", explorer
 export function LandingScreen() {
   usePageTitle(null);
   const navigate = useNavigate();
-  const [fillCount, setFillCount] = useState<number | null>(null);
+  const [stats, setStats] = useState<{fills: number; volume: number} | null>(null);
 
   // Live evidence, from the subgraph so it is always true.
   useEffect(() => {
@@ -24,9 +25,13 @@ export function LandingScreen() {
     const load = async () => {
       try {
         const list = await fetchPositions();
-        if (!stop) setFillCount(list.reduce((acc, p) => acc + p.fills.length, 0));
+        if (!stop)
+          setStats({
+            fills: list.reduce((acc, p) => acc + p.fills.length, 0),
+            volume: list.reduce((acc, p) => acc + Number(p.executedAmount) / 1e18, 0),
+          });
       } catch {
-        if (!stop) setFillCount(null); // silent here: the numbers are a bonus, not the message
+        if (!stop) setStats(null); // silent here: the numbers are a bonus, not the message
       }
     };
     load();
@@ -36,31 +41,41 @@ export function LandingScreen() {
   }, []);
 
   return (
-    <section className="flex flex-col">
-      <div className="flex flex-wrap items-end gap-x-10 gap-y-6">
-        <div style={{maxWidth: 620}}>
-          <h1 className="display" style={{fontSize: "clamp(1.9rem, 3.4vw, 2.7rem)"}}>
-            Split one large swap across time.
-          </h1>
-          <p className="note" style={{fontSize: "0.95rem", marginTop: "0.7rem", lineHeight: 1.55}}>
-            A big order into a thin pool is price impact you pay for. Slope runs it as a schedule — slices over
-            minutes, on the curve you choose, inside rails you set.
-          </p>
-        </div>
-        <div style={{marginLeft: "auto"}}>
-          <button className="act primary" style={{padding: "0.6rem 1.4rem"}} onClick={() => navigate("/create")}>
-            Set a schedule
-          </button>
-          <p className="note num" style={{marginTop: "0.55rem", textAlign: "right"}}>
-            live · {fillCount !== null ? `${fillCount} fills` : "…"} ·{" "}
-            <a href={`${M.explorerUrl}/address/${M.slopePosition}`} target="_blank" rel="noreferrer">
-              contract
-            </a>
-          </p>
-        </div>
+    <section className="grid gap-8 lg:grid-cols-[1fr_1.1fr] lg:gap-10 items-start">
+      <div>
+        <p className="meta">| EXECUTION BENCH // BASE SEPOLIA TESTNET</p>
+        <h1
+          className="num"
+          style={{fontSize: "clamp(1.7rem, 3vw, 2.4rem)", fontWeight: 600, lineHeight: 1.15, margin: 0}}
+        >
+          Discrete execution curves for scheduled high-volume swaps.
+        </h1>
+        <p className="note" style={{fontSize: "0.9rem", marginTop: "0.9rem", lineHeight: 1.55, maxWidth: 470}}>
+          Slope partitions one large swap order into scheduled slices along configurable geometric paths. Execution
+          disperses price impact across time, inside rails you set.
+        </p>
+        <button className="act act-ember" style={{marginTop: "1.5rem", maxWidth: 300}} onClick={() => navigate("/create")}>
+          Initialize execution curve
+        </button>
+        <p className="note" style={{marginTop: "0.8rem"}}>
+          Live testnet: {stats !== null ? stats.volume.toFixed(0) : "…"} routed across{" "}
+          <span className="num">{stats?.fills ?? "…"}</span> fills —{" "}
+          <a href={`${M.explorerUrl}/address/${M.slopePosition}`} target="_blank" rel="noreferrer">
+            view contract
+          </a>
+        </p>
       </div>
 
-      <div style={{marginTop: "1.4rem"}}>
+      <div className="plot" style={{padding: 0}}>
+        <PlotMeta
+          surface="THREE-CURVE BENCH"
+          axis="CUMULATIVE_FILL / TIME"
+          legend={[
+            {color: "#ff7a45", label: "AGGRESSIVE"},
+            {color: "#eae5d6", label: "NEUTRAL"},
+            {color: "#4fb8a9", label: "CONSERVATIVE"},
+          ]}
+        />
         <CurvePreview selected={1} durationSeconds={900} intro />
       </div>
 
