@@ -14,6 +14,7 @@ import {RulerChart} from "./RulerChart";
 import {SHAPE_COLOR, SHAPE_NAME} from "./CurvePreview";
 import {fetchPosition, type Position} from "./lib/subgraph";
 import {fmtClock, fmtDuration, fmtToken, reasonCopy} from "./lib/format";
+import {usePageTitle} from "./lib/usePageTitle";
 
 const M = MANIFEST as {slopePosition: `0x${string}`; chainId: number; publicRpcUrl: string; explorerUrl: string};
 const KEEPER_URL = "http://localhost:8787";
@@ -25,9 +26,11 @@ interface DelegationInfo {
 }
 
 export function ExecutionScreen(props: {positionId: bigint}) {
+  usePageTitle(`Schedule #${props.positionId.toString()}`);
   const {wallets} = useWallets();
   const wallet = wallets.find((w) => w.walletClientType === "privy") ?? wallets[0];
   const [position, setPosition] = useState<Position | null>(null);
+  const [missing, setMissing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [delegation, setDelegation] = useState<DelegationInfo | null>(null);
   const [note, setNote] = useState<{kind: "idle" | "busy" | "ok" | "err"; text: string}>({kind: "idle", text: ""});
@@ -41,6 +44,7 @@ export function ExecutionScreen(props: {positionId: bigint}) {
         if (!stop) {
           setError(null);
           setPosition(p);
+          setMissing(p === null);
         }
       } catch (e) {
         if (!stop) setError(String((e as Error).message ?? e));
@@ -109,6 +113,16 @@ export function ExecutionScreen(props: {positionId: bigint}) {
         <h2 className="display">Live data unreachable</h2>
         <p className="note warn" style={{marginTop: "0.5rem"}}>
           {error} — retrying every 10 seconds. Execution waits for live data; nothing is shown from cache.
+        </p>
+      </div>
+    );
+  }
+  if (missing) {
+    return (
+      <div className="empty">
+        <h2 className="display">No schedule #{props.positionId.toString()}</h2>
+        <p className="note" style={{marginTop: "0.5rem"}}>
+          Nothing is indexed under this id yet — if it was just created, the subgraph needs a moment to catch up.
         </p>
       </div>
     );

@@ -1,35 +1,38 @@
 /**
- * App shell — wayfinding, header chrome, attribution footer.
+ * App shell — chrome, live status, and the route table.
  *
- * Access pattern: every screen is viewable WITHOUT login (the data is
- * public and on-chain); signing in is only required to transact. The live
- * indicator states the truth — keeper server reachability and the
- * subgraph's actual lag behind the chain head.
+ * Every screen has its own URL (/, /create, /positions, /positions/:id,
+ * /performance, /activity): deep links work for demos and evidence, back
+ * and refresh behave, and the document title names the open screen.
+ * Signing in is only required to transact — all screens render for
+ * strangers, and no auth watcher ever forces a redirect.
  */
 import {useEffect, useState} from "react";
+import {NavLink, Route, Routes, useNavigate, useParams} from "react-router-dom";
 import {useLogin, usePrivy, useWallets} from "@privy-io/react-auth";
 import {createPublicClient, http} from "viem";
 import {baseSepolia} from "viem/chains";
 import "./style.css";
-import {CreateScreen} from "./CreateScreen";
 import {LandingScreen} from "./LandingScreen";
+import {CreateScreen} from "./CreateScreen";
 import {PositionsScreen} from "./PositionsScreen";
 import {ExecutionScreen} from "./ExecutionScreen";
 import {PerformanceScreen} from "./PerformanceScreen";
 import {ActivityScreen} from "./ActivityScreen";
 import {FaucetPanel} from "./FaucetPanel";
+import {StatusBar} from "./StatusBar";
 import {fetchHeadBlock} from "./lib/subgraph";
+import {usePageTitle} from "./lib/usePageTitle";
 import MANIFEST from "./manifest.json";
 
 const MANIFEST_APP = MANIFEST as {publicRpcUrl: string};
-
-type Tab = "landing" | "create" | "positions" | "performance" | "activity";
 
 /** Honest live indicator: it says the keeper is running only when the
  *  keeper server answers, and names the subgraph's actual lag. */
 function LiveStatus() {
   const [keeper, setKeeper] = useState<boolean | null>(null);
   const [lag, setLag] = useState<number | null>(null);
+
   useEffect(() => {
     let stop = false;
     const load = async () => {
@@ -56,6 +59,7 @@ function LiveStatus() {
       clearInterval(t);
     };
   }, []);
+
   const healthy = keeper === true && lag !== null && lag <= 50;
   return (
     <span className={`livestatus ${healthy ? "ok" : "warn"}`} title="keeper server on this machine, and how far the subgraph trails the chain head">
@@ -65,21 +69,53 @@ function LiveStatus() {
   );
 }
 
+/** /positions/:id — the deep-linkable evidence view. */
+function ScheduleDetail() {
+  const {id} = useParams();
+  const numeric = Number(id);
+  usePageTitle(Number.isInteger(numeric) && numeric > 0 ? `Schedule #${numeric}` : "Schedule not found");
+  if (!Number.isInteger(numeric) || numeric <= 0) {
+    return (
+      <div className="empty">
+        <h2 className="display" style={{fontSize: "1.4rem"}}>
+          "{id}" is not a schedule id
+        </h2>
+        <p className="note" style={{marginTop: "0.5rem"}}>
+          Open the positions list and pick one — every schedule has its own link.
+        </p>
+        <NavLink className="act" style={{marginTop: "1rem", maxWidth: 220, textAlign: "center"}} to="/positions">
+          All positions
+        </NavLink>
+      </div>
+    );
+  }
+  return (
+    <section className="flex flex-col gap-4">
+      <StatusBar />
+      <NavLink to="/positions" className="linklike" style={{alignSelf: "flex-start"}}>
+        all positions
+      </NavLink>
+      <ExecutionScreen positionId={BigInt(numeric)} />
+    </section>
+  );
+}
+
+const NAV: Array<[string, string]> = [
+  ["/create", "Create"],
+  ["/positions", "Positions"],
+  ["/performance", "Performance"],
+  ["/activity", "Activity"],
+];
+
 export default function App() {
   const {ready, logout} = usePrivy();
   const {login} = useLogin();
   const {wallets} = useWallets();
   const wallet = wallets.find((w) => w.walletClientType === "privy") ?? wallets[0];
-  const [tab, setTab] = useState<Tab>(() => {
-    // Returning users with a schedule go straight to Create; newcomers get
-    // the landing.
-    return localStorage.getItem("positionId") ? "create" : "landing";
-  });
   const [showFaucet, setShowFaucet] = useState(false);
   const [livePositionId, setLivePositionId] = useState<bigint | null>(
     localStorage.getItem("positionId") ? BigInt(localStorage.getItem("positionId")!) : null,
   );
-  const [focusPosition, setFocusPosition] = useState<bigint | null>(null);
 
   if (!ready) {
     return (
@@ -94,22 +130,14 @@ export default function App() {
   return (
     <main>
       <header className="chrome">
-        <span className="wordmark">
+        <NavLink to="/" className="wordmark" aria-label="Slope home">
           slope<span className="livedot">●</span>
-        </span>
+        </NavLink>
         <nav aria-label="Screens">
-          {(
-            [
-              ["landing", "Home"],
-              ["create", "Create"],
-              ["positions", "Positions"],
-              ["performance", "Performance"],
-              ["activity", "Activity"],
-            ] as Array<[Tab, string]>
-          ).map(([key, label]) => (
-            <button key={key} aria-current={tab === key} onClick={() => setTab(key)}>
+          {NAV.map(([to, label]) => (
+            <NavLink key={to} to={to} className={({isActive}) => (isActive ? "active" : undefined)}>
               {label}
-            </button>
+            </NavLink>
           ))}
         </nav>
         <span style={{marginLeft: "auto"}} />
@@ -142,33 +170,23 @@ export default function App() {
       </header>
 
       <div className="work">
-        {tab === "landing" && <LandingScreen onStart={() => setTab("create")} />}
-        {tab === "create" && (
-          <>
-            {livePositionId !== null && (
-              <p className="note ok num" style={{marginBottom: "1rem"}}>
-                schedule #{livePositionId.toString()} is live — create another below, or watch it under Positions
-              </p>
-            )}
-            <CreateScreen onCreated={(id) => setLivePositionId(id)} />
-          </>
-        )}
-        {tab === "positions" && (
-          <PositionsScreen
-            key={focusPosition?.toString() ?? "list"}
-            initialSelected={focusPosition ?? livePositionId}
-            onGoCreate={() => setTab("create")}
+        <Routes>
+          <Route path="/" element={<LandingScreen />} />
+          <Route
+            path="/create"
+            element={
+              <>
+                <CreateRouteHeader livePositionId={livePositionId} />
+                <CreateScreen onCreated={setLivePositionId} />
+              </>
+            }
           />
-        )}
-        {tab === "performance" && (
-          <PerformanceScreen
-            onSelect={(id) => {
-              setFocusPosition(id);
-              setTab("positions");
-            }}
-          />
-        )}
-        {tab === "activity" && <ActivityScreen />}
+          <Route path="/positions" element={<PositionsScreen />} />
+          <Route path="/positions/:id" element={<ScheduleDetail />} />
+          <Route path="/performance" element={<PerformanceScreen />} />
+          <Route path="/activity" element={<ActivityScreen />} />
+          <Route path="*" element={<LandingScreen />} />
+        </Routes>
       </div>
 
       <footer className="attribution">
@@ -189,4 +207,13 @@ export default function App() {
       </footer>
     </main>
   );
+}
+
+function CreateRouteHeader(props: {livePositionId: bigint | null}) {
+  usePageTitle("Create a schedule");
+  return props.livePositionId !== null ? (
+    <p className="note ok num" style={{marginBottom: "1rem"}}>
+      schedule #{props.livePositionId.toString()} is live — create another below, or watch it under Positions
+    </p>
+  ) : null;
 }

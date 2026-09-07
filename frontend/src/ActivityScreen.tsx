@@ -8,6 +8,7 @@ import {useEffect, useMemo, useState} from "react";
 import {fetchPositions, type Position} from "./lib/subgraph";
 import {fmtClock, fmtToken, reasonCopy} from "./lib/format";
 import {StatusBar} from "./StatusBar";
+import {usePageTitle} from "./lib/usePageTitle";
 import MANIFEST from "./manifest.json";
 
 const M = MANIFEST as {explorerUrl: string};
@@ -75,6 +76,7 @@ function toCsv(events: Event[]): string {
 }
 
 export function ActivityScreen() {
+  usePageTitle("Activity");
   const [positions, setPositions] = useState<Position[] | null>(null);
   const [failed, setFailed] = useState(false);
 

@@ -5,11 +5,15 @@
  * is always green would be a red flag.
  */
 import {useEffect, useState} from "react";
+import {useNavigate} from "react-router-dom";
 import {fetchPositions, type Position} from "./lib/subgraph";
+import {usePageTitle} from "./lib/usePageTitle";
 import {fmtBps, fmtToken, fmtVwap} from "./lib/format";
 import {SHAPE_COLOR, SHAPE_NAME} from "./CurvePreview";
 
-export function PerformanceScreen(props: {onSelect: (id: bigint) => void}) {
+export function PerformanceScreen() {
+  usePageTitle("Performance");
+  const navigate = useNavigate();
   const [positions, setPositions] = useState<Position[] | null>(null);
   const [failed, setFailed] = useState(false);
 
@@ -77,7 +81,7 @@ export function PerformanceScreen(props: {onSelect: (id: bigint) => void}) {
           const widthPct = (Math.abs(bps) / maxAbs) * 50;
           const terminal = p.benchmark!.elapsedAtLastFill >= p.duration;
           return (
-            <div key={p.id} className="bench-row" onClick={() => props.onSelect(BigInt(p.id))}>
+            <div key={p.id} className="bench-row" onClick={() => navigate(`/positions/${p.id}`)}>
               <div className="bench-label num">
                 <span className="dot" style={{"--seg-color": SHAPE_COLOR[p.curveShape]} as React.CSSProperties} />#{p.id}
               </div>
@@ -136,7 +140,7 @@ export function PerformanceScreen(props: {onSelect: (id: bigint) => void}) {
           {positions.map((p) => {
             const b = p.benchmark;
             return (
-              <tr key={p.id} onClick={() => props.onSelect(BigInt(p.id))} style={{cursor: "pointer"}}>
+              <tr key={p.id} onClick={() => navigate(`/positions/${p.id}`)} style={{cursor: "pointer"}}>
                 <td className="num">#{p.id}</td>
                 <td>
                   <span className="dot" style={{"--seg-color": SHAPE_COLOR[p.curveShape]} as React.CSSProperties} />

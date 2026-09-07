@@ -4,14 +4,17 @@
  * Selecting a row opens the execution view.
  */
 import {useEffect, useState} from "react";
+import {useNavigate} from "react-router-dom";
 import {useWallets} from "@privy-io/react-auth";
 import {fetchPositions, type Position} from "./lib/subgraph";
 import {fmtToken} from "./lib/format";
 import {SHAPE_COLOR, SHAPE_NAME} from "./CurvePreview";
-import {ExecutionScreen} from "./ExecutionScreen";
 import {StatusBar} from "./StatusBar";
+import {usePageTitle} from "./lib/usePageTitle";
 
-export function PositionsScreen(props: {initialSelected: bigint | null; onGoCreate: () => void}) {
+export function PositionsScreen() {
+  usePageTitle("Positions");
+  const navigate = useNavigate();
   const {wallets} = useWallets();
   const wallet = wallets.find((w) => w.walletClientType === "privy") ?? wallets[0];
   const ownAddress = wallet?.address?.toLowerCase();
@@ -19,7 +22,6 @@ export function PositionsScreen(props: {initialSelected: bigint | null; onGoCrea
   const [positions, setPositions] = useState<Position[] | null>(null);
   const [failed, setFailed] = useState(false);
   const [filter, setFilter] = useState<"all" | "yours">("all");
-  const [selected, setSelected] = useState<bigint | null>(props.initialSelected);
 
   useEffect(() => {
     let stop = false;
@@ -41,18 +43,6 @@ export function PositionsScreen(props: {initialSelected: bigint | null; onGoCrea
       clearInterval(t);
     };
   }, []);
-
-  if (selected !== null) {
-    return (
-      <section className="flex flex-col gap-4">
-        <StatusBar />
-        <button className="linklike" style={{alignSelf: "flex-start"}} onClick={() => setSelected(null)}>
-          all positions
-        </button>
-        <ExecutionScreen positionId={selected} />
-      </section>
-    );
-  }
 
   const ownExists = ownAddress ? (positions ?? []).some((p) => p.owner.toLowerCase() === ownAddress) : false;
   const visible = (positions ?? []).filter((p) => filter === "all" || (ownAddress && p.owner.toLowerCase() === ownAddress));
@@ -93,7 +83,7 @@ export function PositionsScreen(props: {initialSelected: bigint | null; onGoCrea
               <p className="note" style={{marginTop: "0.5rem"}}>
                 Create a schedule and it will be flagged here.
               </p>
-              <button className="act" style={{marginTop: "1rem", maxWidth: 220}} onClick={props.onGoCreate}>
+              <button className="act" style={{marginTop: "1rem", maxWidth: 220}} onClick={() => navigate("/create")}>
                 Set a schedule
               </button>
             </>
@@ -105,7 +95,7 @@ export function PositionsScreen(props: {initialSelected: bigint | null; onGoCrea
               <p className="note" style={{marginTop: "0.5rem"}}>
                 Set how much and how fast — schedules and every slice they execute will appear here.
               </p>
-              <button className="act" style={{marginTop: "1rem", maxWidth: 220}} onClick={props.onGoCreate}>
+              <button className="act" style={{marginTop: "1rem", maxWidth: 220}} onClick={() => navigate("/create")}>
                 Set a schedule
               </button>
             </>
@@ -131,7 +121,7 @@ export function PositionsScreen(props: {initialSelected: bigint | null; onGoCrea
               const mine = ownAddress && p.owner.toLowerCase() === ownAddress;
               const status = !p.isActive ? (p.executedAmount >= p.totalBudget ? "completed" : "cancelled") : "live";
               return (
-                <tr key={p.id} onClick={() => setSelected(BigInt(p.id))} style={{cursor: "pointer"}}>
+                <tr key={p.id} onClick={() => navigate(`/positions/${p.id}`)} style={{cursor: "pointer"}}>
                   <td className="num">#{p.id}{mine ? " (yours)" : ""}</td>
                   <td>
                     <span className="dot" style={{"--seg-color": SHAPE_COLOR[p.curveShape]} as React.CSSProperties} />

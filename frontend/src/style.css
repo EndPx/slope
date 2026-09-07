@@ -59,6 +59,8 @@ main .wordmark {
   font-size: 1.05rem;
   font-weight: 700;
   letter-spacing: -0.02em;
+  color: var(--paper);
+  text-decoration: none;
 }
 main .livedot {
   color: var(--patina);
@@ -73,7 +75,7 @@ main .livedot {
 }
 
 main nav { display: flex; gap: 0.25rem; margin-left: auto; }
-main nav button {
+main nav a {
   padding: 0.35rem 0.7rem;
   background: none;
   border: 1px solid transparent;
@@ -81,13 +83,14 @@ main nav button {
   color: var(--muted);
   font: 600 0.82rem var(--font-ui);
   cursor: pointer;
+  text-decoration: none;
 }
-main nav button[aria-current="true"] {
+main nav a.active {
   color: var(--paper);
   border-color: var(--hairline);
   background: var(--panel);
 }
-main nav button:hover { color: var(--paper); }
+main nav a:hover { color: var(--paper); }
 
 main .work {
   max-width: 1100px;

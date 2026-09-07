@@ -6,12 +6,16 @@
  * numbering, and live evidence pulled from the subgraph.
  */
 import {useEffect, useState} from "react";
+import {useNavigate} from "react-router-dom";
 import {CurvePreview} from "./CurvePreview";
 import {fetchPositions} from "./lib/subgraph";
+import {usePageTitle} from "./lib/usePageTitle";
 
 const M = {slopePosition: "0xC7c6FaD1C2A0e8961E34D40c39C059ECE6dBB8Cc", explorerUrl: "https://sepolia.basescan.org"};
 
-export function LandingScreen(props: {onStart: () => void}) {
+export function LandingScreen() {
+  usePageTitle(null);
+  const navigate = useNavigate();
   const [fillCount, setFillCount] = useState<number | null>(null);
 
   // Live evidence, from the subgraph so it is always true.
@@ -42,7 +46,7 @@ export function LandingScreen(props: {onStart: () => void}) {
             A big order into a thin pool is price impact you pay for. Slope runs it as a schedule — slices over
             minutes, on the curve you choose, inside rails you set.
           </p>
-          <button className="act primary" style={{marginTop: "1.4rem", maxWidth: 280}} onClick={props.onStart}>
+          <button className="act primary" style={{marginTop: "1.4rem", maxWidth: 280}} onClick={() => navigate("/create")}>
             Set a schedule
           </button>
           <p className="note" style={{marginTop: "0.7rem"}}>

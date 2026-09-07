@@ -9,13 +9,25 @@ const QUERY_URL =
   "https://api.studio.thegraph.com/query/1758808/slope-base-sepolia/v0.0.2";
 const API_KEY = (import.meta.env.VITE_GRAPH_API_KEY as string | undefined) ?? "";
 
+/** On HTTP 429 the whole app backs off for a minute: several screens poll,
+ *  and hammering a rate-limited key only extends the lockout. Callers keep
+ *  their last data and show the retry message. */
+let cooldownUntil = 0;
+
 export async function gql<T>(query: string): Promise<T> {
   if (!API_KEY) throw new Error("VITE_GRAPH_API_KEY missing — the UI consumes live subgraph data; set it in .env");
+  if (Date.now() < cooldownUntil) {
+    throw new Error("subgraph rate limited — backing off before the next attempt");
+  }
   const response = await fetch(`${QUERY_URL}?key=${API_KEY}`, {
     method: "POST",
     headers: {"Content-Type": "application/json"},
     body: JSON.stringify({query}),
   });
+  if (response.status === 429) {
+    cooldownUntil = Date.now() + 60_000;
+    throw new Error("subgraph rate limited (HTTP 429) — backing off 60 s");
+  }
   if (!response.ok) throw new Error(`subgraph HTTP ${response.status}`);
   const body: any = await response.json();
   if (body.errors?.length) throw new Error(body.errors[0]?.message ?? "subgraph query error");
