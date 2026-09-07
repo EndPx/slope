@@ -131,9 +131,10 @@ export default function App() {
   return (
     <main>
       <header className="chrome">
-        <NavLink to="/" className="wordmark" aria-label="Slope home">
-          slope<span className="livedot">●</span>
-        </NavLink>
+        <div className="container">
+          <NavLink to="/" className="wordmark" aria-label="Slope home">
+            slope<span className="livedot">●</span>
+          </NavLink>
         <nav aria-label="Screens">
           {NAV.map(([to, label]) => (
             <NavLink key={to} to={to} className={({isActive}) => (isActive ? "active" : undefined)}>
@@ -170,10 +171,12 @@ export default function App() {
             </button>
           )}
         </div>
+        </div>
       </header>
 
       <div className="work">
-        <Routes>
+        <div className="container">
+          <Routes>
           <Route path="/" element={<LandingScreen />} />
           <Route
             path="/create"
@@ -190,23 +193,26 @@ export default function App() {
           <Route path="/activity" element={<ActivityScreen />} />
           <Route path="*" element={<LandingScreen />} />
         </Routes>
+        </div>
       </div>
 
       <footer className="attribution">
-        <span>
-          <code>Powered by Aqua — © Degensoft Ltd 2025 · Powered by SwapVM — © Degensoft Ltd 2025</code>
-        </span>
-        <span>
-          powered by privy · the graph ·{" "}
-          <a
-            className="linklike"
-            href="https://sepolia.basescan.org/address/0xC7c6FaD1C2A0e8961E34D40c39C059ECE6dBB8Cc"
-            target="_blank"
-            rel="noreferrer"
-          >
-            contract
-          </a>
-        </span>
+        <div className="container attribution-row">
+          <span>
+            <code>Powered by Aqua — © Degensoft Ltd 2025 · Powered by SwapVM — © Degensoft Ltd 2025</code>
+          </span>
+          <span>
+            powered by privy · the graph ·{" "}
+            <a
+              className="linklike"
+              href="https://sepolia.basescan.org/address/0xC7c6FaD1C2A0e8961E34D40c39C059ECE6dBB8Cc"
+              target="_blank"
+              rel="noreferrer"
+            >
+              contract
+            </a>
+          </span>
+        </div>
       </footer>
     </main>
   );
