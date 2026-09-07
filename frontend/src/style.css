@@ -29,10 +29,17 @@
 
 body {
   margin: 0;
-  background:
-    radial-gradient(1100px 520px at 85% -10%, rgba(91, 140, 255, 0.08), transparent 60%),
-    radial-gradient(900px 480px at -10% 110%, rgba(69, 196, 216, 0.06), transparent 60%),
-    var(--ink);
+  background-color: var(--ink);
+  /* plotter paper, two tiers: 20px minor grid as the paper base, every
+   * fifth line stronger — one major line = one unit of ruler time.
+   * Lines are our own Ink+Patina derivatives; the single radial in the
+   * top-right corner is the implied light source. */
+  background-image:
+    radial-gradient(1100px 520px at 85% -8%, rgba(91, 140, 255, 0.07), transparent 62%),
+    repeating-linear-gradient(to right, rgba(69, 196, 216, 0.10) 0 1px, transparent 1px 100px),
+    repeating-linear-gradient(to bottom, rgba(69, 196, 216, 0.10) 0 1px, transparent 1px 100px),
+    repeating-linear-gradient(to right, rgba(29, 49, 56, 0.45) 0 1px, transparent 1px 20px),
+    repeating-linear-gradient(to bottom, rgba(29, 49, 56, 0.45) 0 1px, transparent 1px 20px);
   color: var(--paper);
   font-family: var(--font-ui);
   font-weight: 500;
