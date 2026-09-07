@@ -1,14 +1,14 @@
 /**
  * Landing — one job: a stranger understands what Slope does within seconds.
- * Hero: the ruler draws first, then the three curves draw themselves in
- * sequence (the shared Screen-1 canvas component, intro mode) — then
- * everything stops moving. Below: three simultaneous properties, no
- * numbering, and live evidence pulled from the subgraph.
+ * The right side is the FIELD INSTRUMENT (the reference's landing-stage
+ * structure): an animated canvas where the three paces glow and glowing
+ * slices ride the selected pace's own schedule. Choosing a pace re-routes
+ * the balls — Aggressive rushes early, Conservative hugs the floor then
+ * sprints. The chosen pace carries over to Create.
  */
 import {useEffect, useState} from "react";
 import {useNavigate} from "react-router-dom";
-import {CurvePreview} from "./CurvePreview";
-import {PlotMeta} from "./PlotMeta";
+import {HeroFieldCanvas, PACE_COLOR, PACE_NAME, PACE_NOTE} from "./HeroFieldCanvas";
 import {fetchPositions} from "./lib/subgraph";
 import {usePageTitle} from "./lib/usePageTitle";
 
@@ -18,6 +18,15 @@ export function LandingScreen() {
   usePageTitle(null);
   const navigate = useNavigate();
   const [stats, setStats] = useState<{fills: number; volume: number} | null>(null);
+  const [pace, setPace] = useState<number>(() => {
+    const stored = Number(localStorage.getItem("pace"));
+    return [0, 1, 2].includes(stored) ? stored : 1;
+  });
+
+  function selectPace(next: number) {
+    setPace(next);
+    localStorage.setItem("pace", String(next)); // carries into Create's default
+  }
 
   // Live evidence, from the subgraph so it is always true.
   useEffect(() => {
@@ -41,7 +50,7 @@ export function LandingScreen() {
   }, []);
 
   return (
-    <section className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(0,auto)] lg:gap-10 items-center">
+    <section className="grid gap-10 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)] lg:gap-12 items-center">
       <div>
         <p className="meta">Time-distributed execution</p>
         <h1 className="display" style={{fontSize: "clamp(2.4rem, 4.6vw, 3.6rem)", lineHeight: 1.02}}>
@@ -63,20 +72,53 @@ export function LandingScreen() {
         </p>
       </div>
 
-      <div className="plot" style={{padding: 0}}>
-        <div className="plot-meta" style={{borderBottom: "1px solid var(--hairline-soft)"}}>
-          <span style={{color: "var(--paper)", fontWeight: 700, fontSize: "0.82rem", textTransform: "none", letterSpacing: 0}}>
-            Slope field
-          </span>
-          <span>PARAMETRIC EXECUTION ENGINE &nbsp;//&nbsp; AXIS: CUMULATIVE_FILL / TIME</span>
-          <span className="legend" style={{color: "var(--patina)"}}>
-            <span className="livedot">●</span> ENGINE ACTIVE
-          </span>
+      <div className="landing-stage">
+        <div className="hero-orbit hero-orbit-a" />
+        <div className="hero-orbit hero-orbit-b" />
+        <article className="hero-field-card">
+          <header>
+            <div className="field-title">
+              <strong>SLOPE FIELD</strong>
+              <small>PARAMETRIC EXECUTION ENGINE</small>
+            </div>
+            <span className="hero-live">
+              <i /> ENGINE ACTIVE
+            </span>
+          </header>
+          <div className="hero-canvas-wrap">
+            <HeroFieldCanvas pace={pace} />
+            <span className="hero-field-label buy">BUDGET</span>
+            <span className="hero-field-label sell">EXECUTED</span>
+            <span className="hero-mid-label">
+              SLOPE / PACE {PACE_NAME[pace].toUpperCase()}
+            </span>
+          </div>
+          <footer>
+            <div className="hero-pace-readout">
+              <span>PACE</span>
+              <strong style={{color: PACE_COLOR[pace]}}>{PACE_NAME[pace]}</strong>
+            </div>
+            <div className="pace-seg" role="group" aria-label="Execution pace">
+              {[0, 1, 2].map((s) => (
+                <button
+                  key={s}
+                  style={{"--seg-color": PACE_COLOR[s]} as React.CSSProperties}
+                  aria-pressed={pace === s}
+                  onClick={() => selectPace(s)}
+                >
+                  {PACE_NAME[s]}
+                </button>
+              ))}
+            </div>
+          </footer>
+        </article>
+        <div className="hero-floating-stat">
+          <span>SELECTED PACE</span>
+          <strong style={{color: PACE_COLOR[pace]}}>{PACE_NOTE[pace].split(" —")[0]}</strong>
         </div>
-        <CurvePreview selected={1} durationSeconds={900} intro />
       </div>
 
-      <div className="pillars" style={{marginTop: "2.2rem"}}>
+      <div className="pillars">
         <div>
           <h3>The schedule is the only authority</h3>
           <p>Nothing moves unless the curve authorizes it. The contract computes every allowed slice; the delegated

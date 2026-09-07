@@ -53,7 +53,15 @@ export function CreateScreen(props: {onCreated: (id: bigint) => void}) {
 
   const [amount, setAmount] = useState("10");
   const [duration, setDuration] = useState(DURATIONS[1]);
-  const [pace, setPace] = useState(1);
+  // Default pace follows what the visitor explored on the landing field.
+  const [pace, setPaceState] = useState<number>(() => {
+    const stored = Number(localStorage.getItem("pace"));
+    return [0, 1, 2].includes(stored) ? stored : 1;
+  });
+  const setPace = (next: number) => {
+    setPaceState(next);
+    localStorage.setItem("pace", String(next));
+  };
   const [floor, setFloor] = useState("100");
   const [ceiling, setCeiling] = useState("10000");
   const [slippagePct, setSlippagePct] = useState("5.00");
