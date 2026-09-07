@@ -48,7 +48,7 @@ export function RulerChart(props: {
       ctx.font = "10px 'IBM Plex Mono', monospace";
       ctx.textAlign = "right";
       for (const frac of [0, 0.25, 0.5, 0.75, 1]) {
-        ctx.strokeStyle = "#141d2c";
+        ctx.strokeStyle = "#0c1a23";
         ctx.beginPath();
         ctx.moveTo(M.left, yAt(frac) + 0.5);
         ctx.lineTo(w - M.right, yAt(frac) + 0.5);
@@ -112,7 +112,7 @@ export function RulerChart(props: {
       // The ruler with event caps: fills solid (paper), skips hollow (amber) —
       // identical size; the cap IS the decision record.
       const rulerY = h - M.bottom + 0.5;
-      ctx.strokeStyle = "#223047";
+      ctx.strokeStyle = "#13303a";
       ctx.lineWidth = 1;
       ctx.beginPath();
       ctx.moveTo(M.left, rulerY);

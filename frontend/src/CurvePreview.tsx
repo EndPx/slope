@@ -54,7 +54,7 @@ export function CurvePreview(props: {selected: number; durationSeconds: number; 
 
       // Guides: quiet hairlines; bare mono numbers on the left (the "%" is
       // in the caption, not repeated per tick).
-      ctx.strokeStyle = "#141d2c";
+      ctx.strokeStyle = "#0c1a23";
       ctx.lineWidth = 1;
       ctx.font = "10px 'IBM Plex Mono', monospace";
       ctx.fillStyle = "#8fa6a3";
@@ -71,7 +71,7 @@ export function CurvePreview(props: {selected: number; durationSeconds: number; 
 
       // The ruler: the dominant element — ticks + time labels.
       const rulerY = h - M.bottom + 0.5;
-      ctx.strokeStyle = "#223047";
+      ctx.strokeStyle = "#13303a";
       ctx.beginPath();
       ctx.moveTo(M.left, rulerY);
       ctx.lineTo(M.left + innerW * rulerFrac, rulerY);

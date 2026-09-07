@@ -19,8 +19,8 @@
   --patina: #45c4d8;
   --blue: #5b8cff;
   --amber: #e0a845;
-  --hairline: #263650;
-  --hairline-soft: #141d2c;
+  --hairline: #13303a;
+  --hairline-soft: #0c1a23;
   --radius: 14px;
   --font-ui: "Archivo", system-ui, sans-serif;
   --font-num: "IBM Plex Mono", ui-monospace, monospace;
@@ -46,7 +46,7 @@ main input {
 }
 * {
   scrollbar-width: thin;
-  scrollbar-color: #24334c transparent;
+  scrollbar-color: #13303a transparent;
 }
 ::-webkit-scrollbar {
   width: 10px;
@@ -56,12 +56,12 @@ main input {
   background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-  background: #24334c;
+  background: #13303a;
   border-radius: 5px;
   border: 2px solid var(--ink);
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: #31456a;
+  background: #2c4a55;
 }
 
 /* Docked app frame: chrome on top, scrolling work area in the middle,
