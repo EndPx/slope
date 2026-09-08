@@ -40,20 +40,28 @@ The keeper is the subgraph's production consumer (track requirement: meaningful 
 
 ## Query Budget (dev key)
 
-Two different limits apply, and confusing them cost us a debugging round:
-the **monthly quota** (≈100,000 queries/month on the dashboard — we have
-never come near it) and the **per-second/per-minute rate limit**, which is
-what actually returns HTTP 429. A page load used to fire three or four
-queries at once (boot probe, live status, status bar, screen data) —
-twice over with two tabs open — and that burst, colliding with the
-keeper's tick, is what tripped the rate limit. Sustainable settings
-shipped in the repo:
+Measured against the live endpoint (probe once, read the headers — don't
+guess): the Studio dev key has **two separate budgets**, and we have hit
+both flavors of confusion:
+
+- **Monthly plan quota**: 100,000 queries/month — the number the dashboard
+  shows. We have never come near it.
+- **Daily request bucket: 3,000/day** — `x-ratelimit-limit: 3000`,
+  refilled daily. This is the one that returns HTTP 429. When exhausted,
+  the response carries `x-ratelimit-remaining: 0` and a `retry-after`
+  naming the exact reset time (we once waited out a 9.5 h lock).
+
+How the daily bucket burns: the keeper at 30 s alone is 2,880 queries/day
+(96% of it), and old frontend tabs polling every 20–30 s spend the rest in
+hours. Sustainable settings shipped in the repo:
 
 - **Keeper**: ONE combined GraphQL query per tick (positions + latest
   fill + recent skips + `_meta` in a single document), every
-  `KEEPER_POLL_INTERVAL_SECONDS` (default 30 s ≈ 2,880 queries/day),
-  backing off progressively on HTTP 429 (1 → 5 → 15 min, capped),
-  fail-closed throughout.
+  `KEEPER_POLL_INTERVAL_SECONDS` (default 60 s ≈ 1,440 queries/day —
+  half the bucket), backing off progressively on HTTP 429 (1 → 5 →
+  15 min, capped), fail-closed throughout. 429 logs include the
+  `x-ratelimit-*` window state and `retry-after`, so a rate limit names
+  its own limit and reset time.
 - **Frontend**: every subgraph poller runs at 60 s and pauses while the
   tab is hidden (Portfolio included). All queries pass through two burst
   guards in `lib/subgraph.ts`: **single-flight** (concurrent identical
@@ -63,8 +71,10 @@ shipped in the repo:
   5 s (boot probe and live status share one). 429 backs the display
   layer off for 120 s.
 
-For demos: check the remaining quota before recording, and stop the keeper
-(`Ctrl+C`) when it is not needed — no keeper, no fills.
+For demos: the day's bucket is shared by everything on the key — stop the
+keeper (`Ctrl+C`) and close spare tabs when they are not needed. A 429
+with `retry-after` means the day's bucket is gone: wait for the reset it
+names, nothing in the app can lift it.
 
 ## Redeploying
 
