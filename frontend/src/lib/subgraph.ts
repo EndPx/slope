@@ -6,7 +6,7 @@
  */
 const QUERY_URL =
   (import.meta.env.VITE_GRAPH_QUERY_URL as string | undefined) ??
-  "https://api.studio.thegraph.com/query/1758808/slope-base-sepolia/v0.0.2";
+  "https://api.studio.thegraph.com/query/1758938/slope-base-sepolia/v0.0.3";
 const API_KEY = (import.meta.env.VITE_GRAPH_API_KEY as string | undefined) ?? "";
 
 /** On HTTP 429 the whole app backs off: this is the display layer — the

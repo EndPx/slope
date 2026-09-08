@@ -8,9 +8,9 @@ The Slope subgraph indexes the live `SlopePosition` contract on Base Sepolia and
 | --- | --- |
 | Subgraph (slug) | `slope-base-sepolia` |
 | Studio dashboard | https://thegraph.com/studio/subgraph/slope-base-sepolia |
-| Version | `v0.0.2` (versioned query URL — pinned; redeploys archive previous versions) |
-| Queries (HTTP) | `https://api.studio.thegraph.com/query/1758808/slope-base-sepolia/v0.0.2` |
-| Deployment manifest | `QmUggVuX3KcXe8HCmMUP7TxfKo2oNFNx1MPtB85RXRjMFV` (v0.0.2) |
+| Version | `v0.0.3` (versioned query URL — pinned; redeploys archive previous versions) |
+| Queries (HTTP) | `https://api.studio.thegraph.com/query/1758938/slope-base-sepolia/v0.0.3` |
+| Deployment manifest | `QmUggVuX3KcXe8HCmMUP7TxfKo2oNFNx1MPtB85RXRjMFV` (identical for v0.0.2 and v0.0.3 — the source did not change; v0.0.3 is the account migration, see below) |
 | Network | `base-sepolia` |
 | Data source | `SlopePosition` [`0xC7c6FaD1C2A0e8961E34D40c39C059ECE6dBB8Cc`](https://sepolia.basescan.org/address/0xC7c6FaD1C2A0e8961E34D40c39C059ECE6dBB8Cc#code) |
 | startBlock | `46418713` (deployment block, from [`contracts/deployments/base-sepolia.json`](../contracts/deployments/base-sepolia.json)) |
@@ -27,6 +27,8 @@ Entities (SPEC section 6): `Position`, `Fill`, `Skip`, `BenchmarkComparison`.
 - `BenchmarkComparison` is the as-of-last-fill snapshot (DECISION 4), computed in the mapping per MATH_SPEC section 6: `actualVWAP` versus the NEUTRAL schedule at the same observed fill prices, `improvementBps` on the sell side. Live planned-vs-actual curves are computed in the frontend — mappings run on events only, there is no "now" at query time.
 
 The mapping is pure event indexing (zero `eth_calls`). `Position.startTimestamp` is the creation block time — the event itself carries no start time. v0.0.2 adds `creationTx`/`creationBlock`/`cancelledAt`/`completedAt` (the Activity stream's event sources); each redeploy reindexes from `startBlock` and archives the previous version — every consumer (keeper, frontend) pins the new versioned URL in the same change.
+
+**v0.0.3 — account migration (2026-09-08)**: the subgraph was redeployed under a fresh Studio account (`1758938`, replacing `1758808`) with a rotated deploy key, which also restored a clean daily query bucket after the old account's 3,000/day bucket ran dry (see Query Budget). The build is byte-identical to v0.0.2 — same manifest hash — and the query API key carried over unchanged (verified with a live `_meta` + positions query before repinning).
 
 ## Live Consumer — The Keeper
 
