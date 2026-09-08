@@ -228,14 +228,24 @@ export function CreateScreen(props: {onCreated: (id: bigint) => void}) {
   }, [authenticated]);
 
   return (
-    <section className="grid gap-8 lg:grid-cols-[400px_1fr] lg:gap-10">
-      <div className="flex flex-col gap-5">
+    <section className="flex flex-col gap-3">
+      <div className="flex flex-wrap items-end justify-between gap-x-6 gap-y-2">
         <div>
           <p className="meta">| ORDER MATRIX // ESTIMATED LOCALLY — NO CHAIN CALLS</p>
           <h2 className="display num" style={{fontSize: "1.3rem", fontWeight: 600, letterSpacing: 0}}>
             Schedule parameter matrix
           </h2>
         </div>
+        {estimate.slices > 0 && (
+          <p className="note num" style={{margin: 0}}>
+            TRANCHE-COUNT: {estimate.slices} &nbsp;|&nbsp; MEAN SLICE: {fmtToken(estimate.avgSliceRaw, 18, 3)} dETH
+            &nbsp;|&nbsp; CADENCE: ~{estimate.intervalSeconds ?? duration.seconds}s
+          </p>
+        )}
+      </div>
+
+      <div className="create-workspace">
+      <div className="panel create-controls">
 
         <div>
           <p className="label">You allocate (dETH)</p>
@@ -333,7 +343,7 @@ export function CreateScreen(props: {onCreated: (id: bigint) => void}) {
           </div>
         )}
 
-        <div className="mt-1">
+        <div style={{marginTop: "auto", paddingTop: "0.6rem"}}>
           {authenticated ? (
             createdId === null ? (
               <button className="act act-ember" disabled={!inputsValid || busy} onClick={createSchedule}>
@@ -362,29 +372,24 @@ export function CreateScreen(props: {onCreated: (id: bigint) => void}) {
         </div>
       </div>
 
-      <div>
-        <div className="plot" style={{padding: 0, minWidth: 0, width: "fit-content", maxWidth: "100%"}}>
-          <PlotMeta
-            surface="SCHEDULE_PREVIEW"
-            axis="CUMULATIVE_BUDGET / TIME"
-            legend={[
-              {color: "#ff8a50", label: "FRONT"},
-              {color: "#e9edf5", label: "LINEAR"},
-              {color: "#45c4d8", label: "BACK"},
-            ]}
-          />
-          <CurvePreview selected={pace} durationSeconds={duration.seconds} />
+      <div className="panel create-stage">
+        <PlotMeta
+          surface="SCHEDULE_PREVIEW"
+          axis="CUMULATIVE_BUDGET / TIME"
+          legend={[
+            {color: "#ff8a50", label: "FRONT"},
+            {color: "#e9edf5", label: "LINEAR"},
+            {color: "#45c4d8", label: "BACK"},
+          ]}
+        />
+        <div className="plot-canvas-fill">
+          <CurvePreview fill selected={pace} durationSeconds={duration.seconds} />
         </div>
-        {estimate.slices > 0 && (
-          <p className="note num">
-            TRANCHE-COUNT: {estimate.slices} &nbsp;|&nbsp; MEAN SLICE: {fmtToken(estimate.avgSliceRaw, 18, 3)} dETH
-            &nbsp;|&nbsp; CADENCE: ~{estimate.intervalSeconds ?? duration.seconds}s
-          </p>
-        )}
-        <p className="note">
-          % of your budget spent as the window runs. Front-loaded goes early, even leaves steadily, held-back catches up
-          late. Every slice is guarded by your rails and impact limit.
+        <p className="note" style={{padding: "0.45rem 0.9rem", margin: 0}}>
+          % of your budget spent as the window runs. Front-loaded goes early, even leaves steadily, held-back catches
+          up late. Every slice is guarded by your rails and impact limit.
         </p>
+      </div>
       </div>
     </section>
   );

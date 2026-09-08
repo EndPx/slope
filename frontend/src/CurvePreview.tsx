@@ -26,7 +26,14 @@ function curvePoints(shape: number, height: number): Float64Array {
   return pts;
 }
 
-export function CurvePreview(props: {selected: number; durationSeconds: number; intro?: boolean; aspect?: number}) {
+export function CurvePreview(props: {
+  selected: number;
+  durationSeconds: number;
+  intro?: boolean;
+  aspect?: number;
+  /** Create workspace: render the bare canvas so it fills the stage panel. */
+  fill?: boolean;
+}) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const pointsRef = useRef<Float64Array[]>([]);
   const alphasRef = useRef([1, 0.4, 0.4]);
@@ -212,6 +219,17 @@ export function CurvePreview(props: {selected: number; durationSeconds: number; 
   useEffect(() => {
     drawRef.current();
   }, [props.durationSeconds]);
+
+  if (props.fill) {
+    return (
+      <canvas
+        ref={canvasRef}
+        style={{width: "100%", height: "100%", display: "block"}}
+        data-duration={props.durationSeconds}
+        aria-label={`Schedule preview — ${SHAPE_NAME[props.selected]} pace`}
+      />
+    );
+  }
 
   return (
     <div className="plot" style={{width: "fit-content", maxWidth: "100%"}}>
