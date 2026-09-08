@@ -1020,3 +1020,17 @@ main .create-stage .plot-canvas-fill {
   .boot-screen.leaving { transition: none; }
   .boot-bar span { animation: none; }
 }
+main .acct-chain {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font: 500 0.72rem var(--font-num);
+  color: var(--paper);
+}
+main .acct-chain-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--patina);
+  box-shadow: 0 0 6px rgba(69, 196, 216, 0.5);
+}

@@ -9,6 +9,7 @@ import {useWallets} from "@privy-io/react-auth";
 import {useNavigate} from "react-router-dom";
 import {fetchPositionsByOwner, type Position} from "./lib/subgraph";
 import {startPolling} from "./lib/poll";
+import {useWalletBalances} from "./lib/useWalletBalances";
 import {fmtToken} from "./lib/format";
 import {SHAPE_COLOR, SHAPE_NAME} from "./CurvePreview";
 import {usePageTitle} from "./lib/usePageTitle";
@@ -43,6 +44,8 @@ export function PortfolioScreen() {
   const address = wallet?.address;
   const [positions, setPositions] = useState<Position[] | null>(null);
   const [failed, setFailed] = useState(false);
+  // The wallet's own tokens: dETH (schedule input) and dUSD (fill output).
+  const balances = useWalletBalances(address);
 
   useEffect(() => {
     if (!address) return;
@@ -113,6 +116,19 @@ export function PortfolioScreen() {
           </p>
         </div>
       )}
+
+      <div className="statusbar">
+        <span>
+          dETH balance
+          <b>{balances.deth !== null ? fmtToken(balances.deth, 18) : "…"}</b>
+          <small>schedule input — what the faucet mints</small>
+        </span>
+        <span>
+          dUSD balance
+          <b style={{color: "var(--patina)"}}>{balances.dusd !== null ? fmtToken(balances.dusd, 18) : "…"}</b>
+          <small>what your fills receive</small>
+        </span>
+      </div>
 
       {stats !== null && (
         <div className="statusbar">

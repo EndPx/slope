@@ -9,7 +9,7 @@
  */
 import {useEffect, useRef, useState} from "react";
 import {formatUnits} from "viem";
-import {useCustody} from "./lib/useCustody";
+import {useWalletBalances} from "./lib/useWalletBalances";
 import {FaucetPanel} from "./FaucetPanel";
 
 function trimZeros(value: string): string {
@@ -64,7 +64,8 @@ export function AccountChip(props: {
   const [faucetOpen, setFaucetOpen] = useState(false);
   const [copied, setCopied] = useState(false);
   const wrapRef = useRef<HTMLSpanElement>(null);
-  const custody = useCustody(props.address);
+  // The profile shows native ETH (gas) — dETH/dUSD live in the Portfolio.
+  const balances = useWalletBalances(props.address);
 
   // Outside click or Escape closes the popover.
   useEffect(() => {
@@ -108,7 +109,7 @@ export function AccountChip(props: {
           <div className="acct-row">
             <span className="acct-label">Wallet</span>
             <span className="num">
-              {custody.balance !== null ? `${trimZeros(formatUnits(custody.balance, 18))} dETH` : "…"}
+              {balances.eth !== null ? `${trimZeros(formatUnits(balances.eth, 18))} ETH` : "…"}
             </span>
           </div>
           <div className="acct-addr">
@@ -116,6 +117,13 @@ export function AccountChip(props: {
             <button className="acct-copy" onClick={copy} aria-label="Copy wallet address">
               {copied ? <span className="acct-copied">copied</span> : <CopyIcon />}
             </button>
+          </div>
+          <div className="acct-row">
+            <span className="acct-label">Chain</span>
+            <span className="acct-chain">
+              <span className="acct-chain-dot" aria-hidden="true" />
+              Base Sepolia
+            </span>
           </div>
           <button className="acct-faucet" onClick={() => setFaucetOpen((v) => !v)}>
             <ReceiveIcon /> Faucet
