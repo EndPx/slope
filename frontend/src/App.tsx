@@ -102,13 +102,14 @@ function ScheduleDetail() {
   );
 }
 
-// Portfolio is wallet-scoped: it only exists as a destination once a
-// wallet is connected (handled at the call site).
-function navItems(walletConnected: boolean): Array<[string, string]> {
-  const items: Array<[string, string]> = [["/create", "Create"]];
-  if (walletConnected) items.push(["/portfolio", "Portfolio"]);
-  items.push(["/positions", "Positions"], ["/performance", "Performance"], ["/activity", "Activity"]);
-  return items;
+function navItems(): Array<[string, string]> {
+  return [
+    ["/create", "Create"],
+    ["/portfolio", "Portfolio"],
+    ["/positions", "Positions"],
+    ["/performance", "Performance"],
+    ["/activity", "Activity"],
+  ];
 }
 
 export default function App() {
@@ -139,7 +140,7 @@ export default function App() {
             slope<span className="livedot">●</span>
           </NavLink>
         <nav aria-label="Screens">
-          {navItems(Boolean(wallet)).map(([to, label]) => (
+          {navItems().map(([to, label]) => (
             <NavLink key={to} to={to} className={({isActive}) => (isActive ? "active" : undefined)}>
               {label}
             </NavLink>
