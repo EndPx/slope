@@ -22,6 +22,7 @@ import {PortfolioScreen} from "./PortfolioScreen";
 import {ActivityScreen} from "./ActivityScreen";
 import {FaucetPanel} from "./FaucetPanel";
 import {StatusBar} from "./StatusBar";
+import {BootScreen, useBoot} from "./BootScreen";
 import {fetchHeadBlock} from "./lib/subgraph";
 import {startPolling} from "./lib/poll";
 import {usePageTitle} from "./lib/usePageTitle";
@@ -121,15 +122,19 @@ export default function App() {
   const [livePositionId, setLivePositionId] = useState<bigint | null>(
     localStorage.getItem("positionId") ? BigInt(localStorage.getItem("positionId")!) : null,
   );
+  // Boot gate: wallet layer + one live subgraph probe, honestly surfaced.
+  const boot = useBoot(ready);
 
-  if (!ready) {
-    return (
-      <main>
-        <div className="work">
-          <p className="note">loading…</p>
-        </div>
-      </main>
-    );
+  if (!boot.done) {
+    return boot.revealed ? (
+      <BootScreen
+        privyReady={ready}
+        subgraph={boot.subgraph}
+        subgraphNote={boot.subgraphNote}
+        walletStalled={boot.walletStalled}
+        onRetry={boot.retry}
+      />
+    ) : null;
   }
 
   return (
@@ -219,6 +224,18 @@ export default function App() {
           </span>
         </div>
       </footer>
+
+      {/* The boot screen showed itself: fade it over the ready app. */}
+      {boot.revealed && !boot.leaving && (
+        <BootScreen
+          leaving
+          privyReady={ready}
+          subgraph={boot.subgraph}
+          subgraphNote={boot.subgraphNote}
+          walletStalled={boot.walletStalled}
+          onRetry={boot.retry}
+        />
+      )}
     </main>
   );
 }

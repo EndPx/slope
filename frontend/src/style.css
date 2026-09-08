@@ -25,21 +25,22 @@
   --ease-emphasized: cubic-bezier(0.2, 0, 0, 1);
   --font-ui: "Archivo", system-ui, sans-serif;
   --font-num: "IBM Plex Mono", ui-monospace, monospace;
-}
-
-body {
-  margin: 0;
-  background-color: var(--ink);
-  /* plotter paper, two tiers: 20px minor grid as the paper base, every
-   * fifth line stronger — one major line = one unit of ruler time.
-   * Lines are our own Ink+Patina derivatives; the single radial in the
-   * top-right corner is the implied light source. */
-  background-image:
+  /* The world surface, shared by body and the boot screen: plotter paper,
+   * two tiers (20px minor, 100px major = one ruler unit), one radial light
+   * source top-right. Identical on both so the boot hand-off is a
+   * continuation, not a different screen. */
+  --bg-world:
     radial-gradient(1100px 520px at 85% -8%, rgba(91, 140, 255, 0.07), transparent 62%),
     repeating-linear-gradient(to right, rgba(69, 196, 216, 0.08) 0 1px, transparent 1px 100px),
     repeating-linear-gradient(to bottom, rgba(69, 196, 216, 0.08) 0 1px, transparent 1px 100px),
     repeating-linear-gradient(to right, rgba(29, 49, 56, 0.34) 0 1px, transparent 1px 20px),
     repeating-linear-gradient(to bottom, rgba(29, 49, 56, 0.34) 0 1px, transparent 1px 20px);
+}
+
+body {
+  margin: 0;
+  background-color: var(--ink);
+  background-image: var(--bg-world);
   color: var(--paper);
   font-family: var(--font-ui);
   font-weight: 500;
@@ -855,4 +856,78 @@ main .create-stage .plot-canvas-fill {
 @media (max-width: 1023px) {
   main .create-workspace { grid-template-columns: 1fr; min-height: 0; }
   main .create-stage .plot-canvas-fill { min-height: 330px; flex: none; }
+}
+
+/* ---- Boot gate: honest loading screen (see BootScreen.tsx for the rules) */
+.boot-screen {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: var(--ink);
+  background-image: var(--bg-world);
+  animation: boot-in 160ms var(--ease-emphasized);
+}
+.boot-screen.leaving {
+  opacity: 0;
+  transition: opacity 180ms var(--ease-emphasized);
+}
+.boot-box {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.85rem;
+  padding: 0 1.5rem;
+  text-align: center;
+}
+.boot-mark { width: 64px; height: 64px; }
+.boot-name {
+  margin: 0;
+  font: 700 1.25rem var(--font-ui);
+  letter-spacing: -0.02em;
+  color: var(--paper);
+}
+.boot-status {
+  margin: 0;
+  max-width: 460px;
+  font: 500 0.8rem/1.55 var(--font-num);
+  color: var(--muted);
+}
+.boot-bar {
+  width: 180px;
+  height: 2px;
+  background: var(--hairline-soft);
+  border-radius: 1px;
+  overflow: hidden;
+}
+.boot-bar span {
+  display: block;
+  height: 100%;
+  width: 34%;
+  background: var(--patina);
+  border-radius: 1px;
+  animation: boot-sweep 1.1s var(--ease-emphasized) infinite;
+}
+.boot-retry {
+  margin-top: 0.4rem;
+  cursor: pointer;
+  padding: 0.5rem 1.3rem;
+  background: var(--panel-2);
+  color: var(--paper);
+  border: 1px solid var(--hairline);
+  border-radius: 10px;
+  font: 600 0.9rem var(--font-ui);
+}
+.boot-retry:hover { border-color: #2c4a55; }
+@keyframes boot-in { from { opacity: 0; } }
+@keyframes boot-sweep {
+  from { transform: translateX(-110%); }
+  to { transform: translateX(310%); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .boot-screen { animation: none; }
+  .boot-screen.leaving { transition: none; }
+  .boot-bar span { animation: none; }
 }
