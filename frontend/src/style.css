@@ -499,32 +499,101 @@ main .chrome-right {
 main .chrome-right .linklike { color: #5c7370; }
 main .chrome-right .linklike:hover { color: var(--paper); }
 
-main .account {
+main .acct-wrap { position: relative; display: inline-flex; }
+main .acct {
   display: inline-flex;
   align-items: center;
-  gap: 0.5rem;
+  gap: 0.45rem;
+  cursor: pointer;
   background: var(--panel);
   border: 1px solid var(--hairline);
-  border-radius: 10px;
-  padding: 0.28rem 0.6rem;
-}
-main .account .account-dot {
-  width: 0.5em;
-  height: 0.5em;
-  border-radius: 50%;
-  background: var(--patina);
-}
-main .account .num {
-  font: 500 0.74rem var(--font-num);
+  border-radius: 999px;
+  padding: 0.24rem 0.65rem 0.24rem 0.3rem;
   color: var(--paper);
+  font: 600 0.85rem var(--font-ui);
 }
-main .account .account-out {
-  padding: 0 0 0 0.5rem;
-  border-left: 1px solid var(--hairline);
-  border-radius: 0;
+main .acct:hover { border-color: #2c4a55; }
+main .acct-avatar {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background:
+    radial-gradient(120% 120% at 30% 25%, rgba(233, 237, 245, 0.55), transparent 42%),
+    linear-gradient(135deg, var(--patina), var(--blue));
+}
+main .acct-chevron { width: 11px; height: 11px; color: var(--muted); transition: transform 160ms var(--ease-emphasized); }
+main .acct-chevron.open { transform: rotate(180deg); }
+main .acct-pop {
+  position: absolute;
+  top: calc(100% + 0.55rem);
+  right: 0;
+  width: 252px;
+  background: var(--panel);
+  border: 1px solid var(--hairline-soft);
+  border-radius: var(--radius);
+  padding: 0.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.5);
+  animation: acct-in 140ms var(--ease-emphasized);
+  z-index: 40;
+}
+@keyframes acct-in { from { opacity: 0; transform: translateY(-4px); } }
+main .acct-row { display: flex; justify-content: space-between; align-items: baseline; }
+main .acct-label { font: 500 0.68rem var(--font-num); letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
+main .acct-addr {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: var(--ink);
+  border: 1px solid var(--hairline-soft);
+  border-radius: 9px;
+  padding: 0.42rem 0.55rem;
+  font-size: 0.8rem;
+}
+main .acct-copy {
+  display: inline-flex;
+  align-items: center;
+  background: none;
+  border: 0;
+  cursor: pointer;
   color: var(--muted);
+  padding: 0 0.1rem;
 }
-main .account .account-out:hover { color: var(--ember); }
+main .acct-copy:hover { color: var(--paper); }
+main .acct-copied { font: 500 0.68rem var(--font-num); color: var(--patina); }
+main .acct-faucet {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  cursor: pointer;
+  background: var(--patina);
+  color: var(--ink);
+  border: 0;
+  border-radius: 9px;
+  padding: 0.5rem 0.6rem;
+  font: 600 0.85rem var(--font-ui);
+}
+main .acct-faucet:hover { filter: brightness(1.08); }
+main .acct-sep { border-top: 1px solid var(--hairline-soft); margin: 0.1rem -0.75rem; }
+main .acct-logout {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  background: none;
+  border: 0;
+  cursor: pointer;
+  color: var(--muted);
+  font: 600 0.85rem var(--font-ui);
+  padding: 0.25rem 0.1rem;
+}
+main .acct-logout:hover { color: var(--ember); }
+@media (prefers-reduced-motion: reduce) {
+  main .acct-pop { animation: none; }
+  main .acct-chevron { transition: none; }
+}
 
 main .statusbar {
   display: grid;

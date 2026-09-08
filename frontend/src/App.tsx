@@ -20,7 +20,7 @@ import {ExecutionScreen} from "./ExecutionScreen";
 import {PerformanceScreen} from "./PerformanceScreen";
 import {PortfolioScreen} from "./PortfolioScreen";
 import {ActivityScreen} from "./ActivityScreen";
-import {FaucetPanel} from "./FaucetPanel";
+import {AccountChip} from "./AccountChip";
 import {StatusBar} from "./StatusBar";
 import {BootScreen, useBoot} from "./BootScreen";
 import {SlopeMark} from "./LogoSlope";
@@ -115,16 +115,17 @@ function navItems(): Array<[string, string]> {
 }
 
 export default function App() {
-  const {ready, logout} = usePrivy();
+  const {ready, logout, user} = usePrivy();
   const {login} = useLogin();
   const {wallets} = useWallets();
   const wallet = wallets.find((w) => w.walletClientType === "privy") ?? wallets[0];
-  const [showFaucet, setShowFaucet] = useState(false);
   const [livePositionId, setLivePositionId] = useState<bigint | null>(
     localStorage.getItem("positionId") ? BigInt(localStorage.getItem("positionId")!) : null,
   );
   // Boot gate: wallet layer + one live subgraph probe, honestly surfaced.
   const boot = useBoot(ready);
+  // The pill shows the login identity; the wallet address lives in the popover.
+  const name = user?.email?.address?.split("@")[0] ?? null;
 
   if (!boot.done) {
     return boot.revealed ? (
@@ -155,27 +156,16 @@ export default function App() {
         </nav>
         <div className="chrome-right">
           <LiveStatus />
-          {wallet && (
-            <span style={{position: "relative"}}>
-              <button className="linklike" onClick={() => setShowFaucet((v) => !v)}>
-                faucet
-              </button>
-              {showFaucet && <FaucetPanel onClose={() => setShowFaucet(false)} />}
-            </span>
-          )}
           <a className="linklike" href="https://github.com/EndPx/slope" target="_blank" rel="noreferrer">
             docs
           </a>
           {wallet ? (
-            <span className="account" title="Privy embedded wallet — the schedule pulls slices from here">
-              <span className="account-dot" />
-              <span className="num">
-                {wallet.address.slice(0, 6)}…{wallet.address.slice(-4)}
-              </span>
-              <button className="linklike account-out" onClick={() => logout()}>
-                sign out
-              </button>
-            </span>
+            <AccountChip
+              address={wallet.address}
+              name={name}
+              external={wallet.walletClientType !== "privy"}
+              onLogout={logout}
+            />
           ) : (
             <button className="act" style={{padding: "0.3rem 0.8rem", width: "auto"}} onClick={() => login({})}>
               sign in

@@ -27,7 +27,14 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
             // position can be delegated to the keeper.
             ethereum: {createOnLogin: "all-users"},
           },
-          appearance: {theme: "dark"},
+          appearance: {
+            theme: "dark",
+            // No external-wallet buttons anywhere in the modal: session
+            // signers only control Privy-managed wallets, so a MetaMask
+            // connection could never delegate - offering it would be a
+            // dead end dressed as a feature.
+            walletList: [],
+          },
           supportedChains: [baseSepolia],
           defaultChain: baseSepolia,
         }}
