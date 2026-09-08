@@ -119,18 +119,12 @@ export default function App() {
   const {login} = useLogin();
   const {wallets} = useWallets();
   const wallet = wallets.find((w) => w.walletClientType === "privy") ?? wallets[0];
-  const [livePositionId, setLivePositionId] = useState<bigint | null>(
-    localStorage.getItem("positionId") ? BigInt(localStorage.getItem("positionId")!) : null,
-  );
   // Boot gate: wallet layer + one live subgraph probe, honestly surfaced.
   const boot = useBoot(ready);
   // The pill shows the login identity; the wallet address lives in the popover.
   const name = user?.email?.address?.split("@")[0] ?? null;
 
   const handleLogout = async () => {
-    // The live-position banner belongs to the wallet that created it.
-    localStorage.removeItem("positionId");
-    setLivePositionId(null);
     // Never let a stuck logout hang the UI: after completion (or 2 s) reset
     // the document, so stale wallet state can't outlive the session.
     await Promise.race([logout(), new Promise((resolve) => setTimeout(resolve, 2000))]);
@@ -191,12 +185,7 @@ export default function App() {
           <Route path="/" element={<LandingScreen />} />
           <Route
             path="/create"
-            element={
-              <>
-                <CreateRouteHeader livePositionId={livePositionId} />
-                <CreateScreen onCreated={setLivePositionId} />
-              </>
-            }
+            element={<CreateScreen />}
           />
           <Route path="/positions" element={<PositionsScreen />} />
           <Route path="/positions/:id" element={<ScheduleDetail />} />
@@ -240,13 +229,4 @@ export default function App() {
       )}
     </main>
   );
-}
-
-function CreateRouteHeader(props: {livePositionId: bigint | null}) {
-  usePageTitle("Create a schedule");
-  return props.livePositionId !== null ? (
-    <p className="note ok num" style={{marginBottom: "1rem"}}>
-      schedule #{props.livePositionId.toString()} is live — create another below, or watch it under Positions
-    </p>
-  ) : null;
 }

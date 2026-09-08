@@ -14,11 +14,14 @@ import {PlotMeta} from "./PlotMeta";
 import {useCustody} from "./lib/useCustody";
 import {estimateSchedule} from "./lib/schedule-estimate";
 import {fmtToken} from "./lib/format";
+import {usePageTitle} from "./lib/usePageTitle";
 import type {Shape} from "./lib/curve";
 
 const M = MANIFEST as {
   slopePosition: `0x${string}`;
   dETH: `0x${string}`;
+  dUSD: `0x${string}`;
+  aquaRouter: `0x${string}`;
   chainId: number;
   publicRpcUrl: string;
 };
@@ -32,6 +35,19 @@ const ABI = parseAbi([
   "function allowance(address,address) view returns (uint256)",
 ]);
 
+// The same quote call the contract makes before every fill, run from the
+// browser: the estimate shows what the router really answers, not a made-up
+// rate. Second return value is amountOut.
+const QUOTE_ABI = parseAbi([
+  "function quote((address,uint256,bytes) order,address tokenIn,address tokenOut,uint256 amountIn,bytes takerTraitsAndData) view returns (uint256,uint256,uint256)",
+  "function decimals() view returns (uint8)",
+]);
+
+function trimZeros(value: string): string {
+  const trimmed = value.replace(/(\.\d*?)0+$/, "$1").replace(/\.$/, "");
+  return trimmed === "" ? "0" : trimmed;
+}
+
 // Ungated seeded strategy (manifest provenance): maker + salted program.
 const SEED_MAKER = "0xc82f469Aa95a2f7792300c8d11230e9023A98600";
 const AQUA_ORDER_TRAITS = 1n << 254n;
@@ -44,7 +60,8 @@ const DURATIONS = [
   {label: "30 min", seconds: 1800},
 ];
 
-export function CreateScreen(props: {onCreated: (id: bigint) => void}) {
+export function CreateScreen() {
+  usePageTitle("Create a schedule");
   const {login} = useLogin();
   const {addSigners} = useSigners();
   const {wallets} = useWallets();
@@ -116,6 +133,45 @@ export function CreateScreen(props: {onCreated: (id: bigint) => void}) {
     [budget, duration.seconds, pace, minFill],
   );
 
+  // Live dUSD estimate: the Aqua router quotes the actual schedule size —
+  // the same call the contract makes before a fill. Debounced per input
+  // change; a failed quote reads "—", never an invented rate.
+  const [quoteOut, setQuoteOut] = useState<string | null>(null);
+  useEffect(() => {
+    if (!inputsValid) {
+      setQuoteOut(null);
+      return;
+    }
+    let stop = false;
+    const timer = setTimeout(async () => {
+      try {
+        const client = createPublicClient({chain: baseSepolia, transport: http(M.publicRpcUrl)});
+        const [quoted, decimals] = await Promise.all([
+          client.readContract({
+            address: M.aquaRouter,
+            abi: QUOTE_ABI,
+            functionName: "quote",
+            args: [
+              [SEED_MAKER as `0x${string}`, AQUA_ORDER_TRAITS, SEED_PROGRAM as `0x${string}`],
+              M.dETH,
+              M.dUSD,
+              budget,
+              TAKER_BLOB,
+            ],
+          }),
+          client.readContract({address: M.dUSD, abi: QUOTE_ABI, functionName: "decimals"}),
+        ]);
+        if (!stop) setQuoteOut(trimZeros(formatUnits(quoted[1], decimals)));
+      } catch {
+        if (!stop) setQuoteOut("—");
+      }
+    }, 350);
+    return () => {
+      stop = true;
+      clearTimeout(timer);
+    };
+  }, [budget, inputsValid]);
+
   const walletClient = async () => {
     const eth = (await wallet!.getEthereumProvider()) as any;
     try {
@@ -161,7 +217,7 @@ export function CreateScreen(props: {onCreated: (id: bigint) => void}) {
           args: [
             {
               tokenIn: M.dETH,
-              tokenOut: "0x06A41268C8cA9d5ADa19b02a8E2f37A0195dC49c",
+              tokenOut: M.dUSD,
               totalBudget: budget,
               minFillAmount: minFill,
               duration: BigInt(duration.seconds),
@@ -183,8 +239,6 @@ export function CreateScreen(props: {onCreated: (id: bigint) => void}) {
       if (!created) throw new Error("ScheduleCreated event not found in receipt");
       const id = BigInt(created.topics[1] as string);
       setCreatedId(id);
-      localStorage.setItem("positionId", id.toString());
-      props.onCreated(id);
       setStatus({kind: "ok", text: `Schedule #${id} is live.`});
     } catch (e: any) {
       setStatus({kind: "err", text: `The schedule wasn't recorded — ${e.shortMessage ?? e.message}. Nothing was delegated; try again.`});
@@ -230,16 +284,14 @@ export function CreateScreen(props: {onCreated: (id: bigint) => void}) {
   return (
     <section className="create-screen">
       <div className="flex flex-wrap items-end justify-between gap-x-6 gap-y-2">
-        <div>
-          <p className="meta">| ORDER MATRIX // ESTIMATED LOCALLY — NO CHAIN CALLS</p>
-          <h2 className="display num" style={{fontSize: "1.3rem", fontWeight: 600, letterSpacing: 0}}>
-            Schedule parameter matrix
-          </h2>
-        </div>
+        <h2 className="display num" style={{fontSize: "1.3rem", fontWeight: 600, letterSpacing: 0, margin: 0}}>
+          Schedule parameter matrix
+        </h2>
         {estimate.slices > 0 && (
           <p className="note num" style={{margin: 0}}>
             TRANCHE-COUNT: {estimate.slices} &nbsp;|&nbsp; MEAN SLICE: {fmtToken(estimate.avgSliceRaw, 18, 3)} dETH
             &nbsp;|&nbsp; CADENCE: ~{estimate.intervalSeconds ?? duration.seconds}s
+            {quoteOut !== null && <> &nbsp;|&nbsp; EST. OUT: ~{quoteOut} dUSD</>}
           </p>
         )}
       </div>
@@ -383,7 +435,14 @@ export function CreateScreen(props: {onCreated: (id: bigint) => void}) {
           ]}
         />
         <div className="plot-canvas-fill">
-          <CurvePreview fill focus selected={pace} durationSeconds={duration.seconds} tranches={estimate.slices} />
+          <CurvePreview
+            fill
+            focus
+            selected={pace}
+            durationSeconds={duration.seconds}
+            tranches={estimate.slices}
+            amount={inputsValid ? Number(amount) : undefined}
+          />
         </div>
         <p className="note" style={{padding: "0.45rem 0.9rem", margin: 0}}>
           % of your budget spent as the window runs. Front-loaded goes early, even leaves steadily, held-back catches

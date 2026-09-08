@@ -38,6 +38,8 @@ export function CurvePreview(props: {
   tranches?: number;
   /** Stronger selection contrast (others drop to 25%) for configure views. */
   focus?: boolean;
+  /** Budget size for the hover readout; undefined keeps hover time-only. */
+  amount?: number;
 }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const pointsRef = useRef<Float64Array[]>([]);
@@ -159,6 +161,62 @@ export function CurvePreview(props: {
         ctx.shadowBlur = 0;
       }
       ctx.globalAlpha = 1;
+
+      // Hover: crosshair + the honest numbers at the cursor's moment,
+      // drawn last so nothing paints over it.
+      const hover = hoverRef.current;
+      if (hover && rulerFrac >= 1) {
+        const frac = Math.min(1, Math.max(0, (hover.x - M.left) / innerW));
+        const ptsSel = pointsRef.current[selectedRef.current];
+        const y = ptsSel[Math.min(ptsSel.length - 1, Math.floor(frac * (ptsSel.length - 1)))];
+        const spent = Math.min(1, Math.max(0, 1 - (y - M.top) / (h - M.top - M.bottom)));
+        const crossX = M.left + frac * innerW;
+        ctx.strokeStyle = "#1d3138";
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(crossX, M.top);
+        ctx.lineTo(crossX, h - M.bottom);
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.arc(crossX, y, 3.5, 0, Math.PI * 2);
+        ctx.fillStyle = "#f4f8ff";
+        ctx.fill();
+        ctx.strokeStyle = "#070b13";
+        ctx.lineWidth = 1.5;
+        ctx.stroke();
+
+        const seconds = Math.round(frac * Number(canvas.dataset.duration ?? 900));
+        const lines = [
+          `T+${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, "0")}`,
+          `${(spent * 100).toFixed(1)}% spent` +
+            (amountRef.current !== undefined ? ` · ${(amountRef.current * spent).toFixed(3)} dETH` : ""),
+          `${((1 - spent) * 100).toFixed(1)}% left`,
+        ];
+        if (tranchesRef.current > 0) {
+          lines.push(
+            `slice ${Math.min(tranchesRef.current, Math.floor(frac * tranchesRef.current) + 1)}/${tranchesRef.current}`,
+          );
+        }
+        ctx.font = "10px 'IBM Plex Mono', monospace";
+        const tw = Math.max(...lines.map((line) => ctx.measureText(line).width)) + 16;
+        const th = lines.length * 13 + 10;
+        let bx = crossX + 14;
+        if (bx + tw > w - 4) bx = crossX - tw - 14;
+        const by = Math.max(M.top + 2, y - th - 12);
+        ctx.beginPath();
+        ctx.roundRect(bx, by, tw, th, 8);
+        ctx.fillStyle = "rgba(7, 11, 19, 0.92)";
+        ctx.fill();
+        ctx.strokeStyle = "#1d3138";
+        ctx.lineWidth = 1;
+        ctx.stroke();
+        ctx.textAlign = "left";
+        lines.forEach((line, i) => {
+          ctx.fillStyle = i === 0 ? "#e9edf5" : "#8b9bb0";
+          ctx.fillText(line, bx + 8, by + 18 + i * 13);
+        });
+        ctx.textAlign = "center";
+      }
     };
     drawRef.current = draw;
 
@@ -175,6 +233,19 @@ export function CurvePreview(props: {
     resize();
     const ro = new ResizeObserver(resize);
     ro.observe(canvas);
+
+    // Hover tracking — the crosshair follows every move, disappears on leave.
+    const onMove = (e: MouseEvent) => {
+      const rect = canvas.getBoundingClientRect();
+      hoverRef.current = {x: e.clientX - rect.left};
+      draw();
+    };
+    const onLeave = () => {
+      hoverRef.current = null;
+      draw();
+    };
+    canvas.addEventListener("mousemove", onMove);
+    canvas.addEventListener("mouseleave", onLeave);
 
     // Intro timeline (landing only): ruler 0–0.5s, then curve 1, 2, 3 each
     // 0.5s — about two seconds, then it stops and stays still.
@@ -209,16 +280,20 @@ export function CurvePreview(props: {
     springsRef.current = [0, 1, 2].map(
       (s) => new Spring(1.0, 0.3, alphasRef.current[s], () => kickLoop()),
     );
-    // Wire the selection effect to the live springs.
+    // Wire the selection effect to the live springs + the draw-on reveal.
     retargetRef.current = (selected: number) => {
       springsRef.current?.forEach((sp, s) => sp.retarget(s === selected ? 1 : othersRef.current));
+      if (!props.intro) startReveal(selected);
       kickLoop();
     };
 
     return () => {
       ro.disconnect();
+      canvas.removeEventListener("mousemove", onMove);
+      canvas.removeEventListener("mouseleave", onLeave);
       if (loopRef.current) cancelAnimationFrame(loopRef.current);
       if (introRaf) cancelAnimationFrame(introRaf);
+      if (revealRafRef.current) cancelAnimationFrame(revealRafRef.current);
       loopRef.current = 0;
       springsRef.current?.forEach((sp) => sp.dispose());
       springsRef.current = null;
@@ -230,6 +305,29 @@ export function CurvePreview(props: {
   const retargetRef = useRef<((selected: number) => void) | null>(null);
   const tranchesRef = useRef(props.tranches ?? 0);
   const othersRef = useRef(props.focus ? 0.25 : 0.4);
+  const amountRef = useRef(props.amount);
+  const hoverRef = useRef<{x: number} | null>(null);
+  const revealRafRef = useRef(0);
+
+  // Pace change: the newly selected curve redraws itself start → end
+  // (~0.65 s, skipped under reduced motion).
+  const startReveal = (s: number) => {
+    cancelAnimationFrame(revealRafRef.current);
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      revealRef.current[s] = 1;
+      drawRef.current();
+      return;
+    }
+    const t0 = performance.now();
+    const tick = (t: number) => {
+      const el = (t - t0) / 1000;
+      revealRef.current[s] = Math.min(1, el / 0.65);
+      drawRef.current();
+      if (el < 0.65) revealRafRef.current = requestAnimationFrame(tick);
+      else revealRef.current[s] = 1;
+    };
+    revealRafRef.current = requestAnimationFrame(tick);
+  };
 
   useEffect(() => {
     // Initial state without waiting for a spring tick.
@@ -244,6 +342,11 @@ export function CurvePreview(props: {
     tranchesRef.current = props.tranches ?? 0;
     drawRef.current();
   }, [props.tranches]);
+
+  useEffect(() => {
+    amountRef.current = props.amount;
+    drawRef.current();
+  }, [props.amount]);
 
   // Focus mode (configure views): dim the comparison curves further.
   useEffect(() => {
