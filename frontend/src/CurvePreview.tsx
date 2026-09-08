@@ -33,6 +33,11 @@ export function CurvePreview(props: {
   aspect?: number;
   /** Create workspace: render the bare canvas so it fills the stage panel. */
   fill?: boolean;
+  /** Tranche grid: bars under the selected curve, one per scheduled slice —
+   *  the amount/duration/min-slice inputs made visible in the chart. */
+  tranches?: number;
+  /** Stronger selection contrast (others drop to 25%) for configure views. */
+  focus?: boolean;
 }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const pointsRef = useRef<Float64Array[]>([]);
@@ -107,6 +112,24 @@ export function CurvePreview(props: {
         }
       }
       ctx.globalAlpha = 1;
+
+      // Tranche grid: one bar per scheduled slice, its top riding the
+      // selected curve (cumulative authorized by that tranche). This is how
+      // the amount/duration/min-slice inputs show up in the picture.
+      const trancheCount = Math.min(tranchesRef.current, 400);
+      if (trancheCount > 0) {
+        const pts = pointsRef.current[selectedRef.current];
+        const barW = innerW / trancheCount;
+        const gap = Math.min(6, Math.max(1.5, barW * 0.22));
+        ctx.fillStyle = SHAPE_COLOR[selectedRef.current];
+        ctx.globalAlpha = 0.1 * rulerFrac;
+        for (let i = 0; i < trancheCount; i++) {
+          const frac = (i + 0.5) / trancheCount;
+          const yTop = pts[Math.min(pts.length - 1, Math.floor(frac * (pts.length - 1)))];
+          ctx.fillRect(M.left + i * barW + gap / 2, yTop, Math.max(1, barW - gap), h - M.bottom - yTop);
+        }
+        ctx.globalAlpha = 1;
+      }
 
       // Three equal-weight curves; only opacity separates the selection.
       // During the intro each curve draws itself left to right. The
@@ -188,7 +211,7 @@ export function CurvePreview(props: {
     );
     // Wire the selection effect to the live springs.
     retargetRef.current = (selected: number) => {
-      springsRef.current?.forEach((sp, s) => sp.retarget(s === selected ? 1 : 0.4));
+      springsRef.current?.forEach((sp, s) => sp.retarget(s === selected ? 1 : othersRef.current));
       kickLoop();
     };
 
@@ -205,15 +228,28 @@ export function CurvePreview(props: {
 
   const selectedRef = useRef(props.selected);
   const retargetRef = useRef<((selected: number) => void) | null>(null);
+  const tranchesRef = useRef(props.tranches ?? 0);
+  const othersRef = useRef(props.focus ? 0.25 : 0.4);
 
   useEffect(() => {
     // Initial state without waiting for a spring tick.
     if (!retargetRef.current) {
-      alphasRef.current = [0, 1, 2].map((s) => (s === props.selected ? 1 : 0.4));
+      alphasRef.current = [0, 1, 2].map((s) => (s === props.selected ? 1 : othersRef.current));
     }
     selectedRef.current = props.selected;
     retargetRef.current?.(props.selected);
   }, [props.selected]);
+
+  useEffect(() => {
+    tranchesRef.current = props.tranches ?? 0;
+    drawRef.current();
+  }, [props.tranches]);
+
+  // Focus mode (configure views): dim the comparison curves further.
+  useEffect(() => {
+    othersRef.current = props.focus ? 0.25 : 0.4;
+    retargetRef.current?.(selectedRef.current);
+  }, [props.focus]);
 
   // Duration changes only move ruler labels — redraw with the new dataset.
   useEffect(() => {

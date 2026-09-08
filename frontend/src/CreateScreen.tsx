@@ -228,7 +228,7 @@ export function CreateScreen(props: {onCreated: (id: bigint) => void}) {
   }, [authenticated]);
 
   return (
-    <section className="flex flex-col gap-3">
+    <section className="create-screen">
       <div className="flex flex-wrap items-end justify-between gap-x-6 gap-y-2">
         <div>
           <p className="meta">| ORDER MATRIX // ESTIMATED LOCALLY — NO CHAIN CALLS</p>
@@ -383,7 +383,7 @@ export function CreateScreen(props: {onCreated: (id: bigint) => void}) {
           ]}
         />
         <div className="plot-canvas-fill">
-          <CurvePreview fill selected={pace} durationSeconds={duration.seconds} />
+          <CurvePreview fill focus selected={pace} durationSeconds={duration.seconds} tranches={estimate.slices} />
         </div>
         <p className="note" style={{padding: "0.45rem 0.9rem", margin: 0}}>
           % of your budget spent as the window runs. Front-loaded goes early, even leaves steadily, held-back catches

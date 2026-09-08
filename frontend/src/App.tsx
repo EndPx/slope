@@ -127,6 +127,16 @@ export default function App() {
   // The pill shows the login identity; the wallet address lives in the popover.
   const name = user?.email?.address?.split("@")[0] ?? null;
 
+  const handleLogout = async () => {
+    // The live-position banner belongs to the wallet that created it.
+    localStorage.removeItem("positionId");
+    setLivePositionId(null);
+    // Never let a stuck logout hang the UI: after completion (or 2 s) reset
+    // the document, so stale wallet state can't outlive the session.
+    await Promise.race([logout(), new Promise((resolve) => setTimeout(resolve, 2000))]);
+    window.location.assign("/");
+  };
+
   if (!boot.done) {
     return boot.revealed ? (
       <BootScreen
@@ -164,7 +174,7 @@ export default function App() {
               address={wallet.address}
               name={name}
               external={wallet.walletClientType !== "privy"}
-              onLogout={logout}
+              onLogout={handleLogout}
             />
           ) : (
             <button className="act" style={{padding: "0.3rem 0.8rem", width: "auto"}} onClick={() => login({})}>

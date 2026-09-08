@@ -127,7 +127,13 @@ export function AccountChip(props: {
             </p>
           )}
           <div className="acct-sep" />
-          <button className="acct-logout" onClick={props.onLogout}>
+          <button
+            className="acct-logout"
+            onClick={() => {
+              setOpen(false);
+              props.onLogout();
+            }}
+          >
             <LogoutIcon /> Log out
           </button>
         </div>

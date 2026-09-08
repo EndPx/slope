@@ -76,12 +76,18 @@ main input {
 /* Docked app frame: chrome on top, scrolling work area in the middle,
  * footer pinned to the bottom edge — at the layout level, so it holds for
  * every route. Scrolling happens INSIDE .work; nothing hides behind the
- * header or footer. */
+ * header or footer. The work container is a fixed-height flex column, so
+ * screens that want the full row (Create) can size to exactly the rest. */
 main {
   display: flex;
   flex-direction: column;
   height: 100vh;
   height: 100dvh;
+}
+main .work > .container {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
 }
 
 /* Every rule below is scoped under `main` on purpose: the Privy login modal
@@ -897,20 +903,29 @@ main td.neg { color: var(--ember); }
 }
 
 /* ---- Create: studio workspace — controls docked left, stage fills the rest */
+main .create-screen {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
 main .create-workspace {
   display: grid;
   grid-template-columns: minmax(320px, 400px) minmax(0, 1fr);
   gap: 0.75rem;
   align-items: stretch;
-  /* fills the viewport row under the header strip; scrolls as one unit */
-  min-height: calc(100dvh - 250px);
+  /* exactly the rest of the one-screen layout; never taller than the row */
+  flex: 1;
+  min-height: 0;
 }
 main .create-controls {
   display: flex;
   flex-direction: column;
-  gap: 1.05rem;
-  padding: 1.1rem;
+  gap: 0.8rem;
+  padding: 0.9rem;
   min-width: 0;
+  overflow-y: auto;
 }
 .create-controls > div:last-of-type { margin-top: auto; }
 main .create-stage {
@@ -926,6 +941,8 @@ main .create-stage .plot-canvas-fill {
   padding: 0.55rem 0.35rem 0.1rem;
 }
 @media (max-width: 1023px) {
+  main .create-screen { flex: none; }
+  main .work > .container { height: auto; }
   main .create-workspace { grid-template-columns: 1fr; min-height: 0; }
   main .create-stage .plot-canvas-fill { min-height: 330px; flex: none; }
 }
