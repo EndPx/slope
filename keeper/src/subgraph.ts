@@ -62,6 +62,26 @@ export async function fetchSnapshot(apiKey: string, queryUrl: string): Promise<S
     body: JSON.stringify({query: CANDIDATES_QUERY}),
   });
   if (!response.ok) {
+    if (response.status === 429) {
+      // Name the limit: Studio answers with x-ratelimit-* headers and a
+      // retry-after — without them "429" is undiagnosable (we burned a
+      // debugging round guessing between per-second limits and quotas).
+      const retryAfter = response.headers.get("retry-after");
+      const limit = response.headers.get("x-ratelimit-limit");
+      const remaining = response.headers.get("x-ratelimit-remaining");
+      const reset = response.headers.get("x-ratelimit-reset");
+      const detail = [
+        retryAfter && `retry-after ${retryAfter}s`,
+        limit && `window limit ${limit}`,
+        remaining && `remaining ${remaining}`,
+        reset && `resets ${new Date(Number(reset) * 1000).toISOString()}`,
+      ]
+        .filter(Boolean)
+        .join(", ");
+      throw new Error(
+        `subgraph query failed: HTTP 429 ${detail || await response.text()}`,
+      );
+    }
     throw new Error(`subgraph query failed: HTTP ${response.status} ${await response.text()}`);
   }
   const body: any = await response.json();

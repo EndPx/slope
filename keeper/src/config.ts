@@ -17,8 +17,9 @@ export interface KeeperConfig {
   /** Extra seconds past the position window before the policy expires. */
   settlementBufferSeconds: bigint;
   /** How often the keeper polls the subgraph (seconds). The curve works in
-   *  minute-scale — 30s stays timely without burning the Studio dev key's
-   *  daily quota (15s would be ~5.7k queries/day from the keeper alone). */
+   *  minute-scale; 60s is the sustainable default — the Studio dev key's
+   *  DAILY bucket is 3,000 requests (measured: x-ratelimit-limit: 3000),
+   *  and 30s alone would burn 2,880 of it, leaving nothing for the UI. */
   pollIntervalSeconds: number;
   /** Live subgraph consumption (track requirement): the VERSIONED Studio
    *  query endpoint, pinned at v0.0.1 — not a generic URL. */
@@ -48,7 +49,7 @@ export function loadConfig(): KeeperConfig {
     manifestPath: "deployments/base-sepolia.json",
     keystorePath: ".keystore.json",
     settlementBufferSeconds: 86_400n, // one day past the window for terminal settles
-    pollIntervalSeconds: Math.max(5, Number(process.env.KEEPER_POLL_INTERVAL_SECONDS ?? 30)),
+    pollIntervalSeconds: Math.max(5, Number(process.env.KEEPER_POLL_INTERVAL_SECONDS ?? 60)),
     graphApiKey: process.env.GRAPH_API_KEY ?? "",
     // Pinned versioned deployment (docs/SUBGRAPH.md); GRAPH_QUERY_URL can
     // point at a newer version after a redeploy — never a generic URL.

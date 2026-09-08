@@ -288,7 +288,10 @@ async function tick(): Promise<void> {
       rateAttempt += 1;
       rateLimitedUntil = Date.now() + backoff * 1000;
       wasRateLimited = true;
-      console.error(`subgraph rate limited (429) — backing off ${backoff} s, no execution, no fallback path`);
+      console.error(
+        `subgraph rate limited (429) — backing off ${backoff} s, no execution, no fallback path`,
+        `(${message.slice(0, 240)})`,
+      );
       return;
     }
     console.error("SUBGRAPH UNREACHABLE — no execution this tick (no fallback path):", message.slice(0, 300));
