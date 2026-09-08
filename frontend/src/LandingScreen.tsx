@@ -50,7 +50,8 @@ export function LandingScreen() {
   }, []);
 
   return (
-    <section className="grid gap-10 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)] lg:gap-12 items-center">
+    <section className="flex flex-col">
+      <div className="grid gap-8 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)] lg:gap-12 items-center">
       <div>
         <h1 className="display" style={{fontSize: "clamp(2.4rem, 4.6vw, 3.6rem)", lineHeight: 1.02}}>
           A big swap, executed slowly.
@@ -121,6 +122,7 @@ export function LandingScreen() {
             {pace === 2 && "Catch-up — the budget leaves late."}
           </small>
         </div>
+      </div>
       </div>
 
       <div className="pillars">

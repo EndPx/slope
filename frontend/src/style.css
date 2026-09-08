@@ -361,25 +361,28 @@ main .strip .grow { flex: 1; min-width: 220px; }
 main .pillars {
   display: grid;
   gap: 2rem;
+  margin-top: clamp(4rem, 9vh, 6.5rem); /* its own section, not a hero appendix */
+  padding-top: 2rem;
+  border-top: 1px solid var(--hairline-soft);
 }
 @media (min-width: 1024px) {
   main .pillars {
-    grid-template-columns: repeat(3, 1fr);
-    gap: 2.5rem;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 3.5rem;
   }
 }
 main .pillars h3 {
-  font: 700 1.05rem var(--font-ui);
+  font: 700 1.08rem var(--font-ui);
   letter-spacing: -0.01em;
   margin: 0 0 0.5rem;
   color: var(--paper);
 }
 main .pillars p {
   margin: 0;
-  font: 400 0.88rem var(--font-ui);
+  font: 400 0.9rem var(--font-ui);
   color: var(--muted);
-  line-height: 1.55;
-  max-width: 34ch;
+  line-height: 1.6;
+  max-width: 52ch;
 }
 
 main .empty {
