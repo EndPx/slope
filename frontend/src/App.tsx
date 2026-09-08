@@ -18,6 +18,7 @@ import {CreateScreen} from "./CreateScreen";
 import {PositionsScreen} from "./PositionsScreen";
 import {ExecutionScreen} from "./ExecutionScreen";
 import {PerformanceScreen} from "./PerformanceScreen";
+import {PortfolioScreen} from "./PortfolioScreen";
 import {ActivityScreen} from "./ActivityScreen";
 import {FaucetPanel} from "./FaucetPanel";
 import {StatusBar} from "./StatusBar";
@@ -101,12 +102,14 @@ function ScheduleDetail() {
   );
 }
 
-const NAV: Array<[string, string]> = [
-  ["/create", "Create"],
-  ["/positions", "Positions"],
-  ["/performance", "Performance"],
-  ["/activity", "Activity"],
-];
+// Portfolio is wallet-scoped: it only exists as a destination once a
+// wallet is connected (handled at the call site).
+function navItems(walletConnected: boolean): Array<[string, string]> {
+  const items: Array<[string, string]> = [["/create", "Create"]];
+  if (walletConnected) items.push(["/portfolio", "Portfolio"]);
+  items.push(["/positions", "Positions"], ["/performance", "Performance"], ["/activity", "Activity"]);
+  return items;
+}
 
 export default function App() {
   const {ready, logout} = usePrivy();
@@ -136,7 +139,7 @@ export default function App() {
             slope<span className="livedot">●</span>
           </NavLink>
         <nav aria-label="Screens">
-          {NAV.map(([to, label]) => (
+          {navItems(Boolean(wallet)).map(([to, label]) => (
             <NavLink key={to} to={to} className={({isActive}) => (isActive ? "active" : undefined)}>
               {label}
             </NavLink>
@@ -189,6 +192,7 @@ export default function App() {
           />
           <Route path="/positions" element={<PositionsScreen />} />
           <Route path="/positions/:id" element={<ScheduleDetail />} />
+          <Route path="/portfolio" element={<PortfolioScreen />} />
           <Route path="/performance" element={<PerformanceScreen />} />
           <Route path="/activity" element={<ActivityScreen />} />
           <Route path="*" element={<LandingScreen />} />

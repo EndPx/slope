@@ -122,7 +122,7 @@ main .livedot {
   main .livedot { animation: none; opacity: 1; }
 }
 
-main nav { display: flex; gap: 0.25rem; }
+main nav { display: flex; gap: 1rem; margin-left: 1.6rem; }
 main nav a {
   cursor: pointer;
   padding: 0.42rem 0.15rem 0.52rem;
