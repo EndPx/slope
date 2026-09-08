@@ -8,7 +8,7 @@
  */
 import {useEffect, useState} from "react";
 import {useNavigate} from "react-router-dom";
-import {HeroFieldCanvas, PACE_COLOR, PACE_NAME, PACE_NOTE} from "./HeroFieldCanvas";
+import {HeroFieldCanvas, PACE_COLOR, PACE_NAME} from "./HeroFieldCanvas";
 import {fetchPositions} from "./lib/subgraph";
 import {usePageTitle} from "./lib/usePageTitle";
 
@@ -82,7 +82,7 @@ export function LandingScreen() {
             </div>
           </header>
           <div className="hero-canvas-wrap">
-            <HeroFieldCanvas pace={pace} />
+            <HeroFieldCanvas pace={pace} durationSeconds={900} />
             <span className="hero-field-label buy" style={{top: "auto", bottom: "10%", left: "4%"}}>
               0% · START
             </span>
@@ -114,7 +114,12 @@ export function LandingScreen() {
         </article>
         <div className="hero-floating-stat">
           <span>SELECTED PACE</span>
-          <strong style={{color: PACE_COLOR[pace]}}>{PACE_NOTE[pace].split(" —")[0]}</strong>
+          <strong style={{color: PACE_COLOR[pace]}}>{PACE_NAME[pace]}</strong>
+          <small>
+            {pace === 0 && "Front-loaded — most of the budget leaves early."}
+            {pace === 1 && "Even — the budget leaves at a constant rate."}
+            {pace === 2 && "Catch-up — the budget leaves late."}
+          </small>
         </div>
       </div>
 

@@ -794,7 +794,7 @@ main td.neg { color: var(--ember); }
   position: absolute;
   z-index: 4;
   right: -1.5%;
-  bottom: 10%;
+  bottom: 38%; /* clear of the ruler labels at the card's bottom edge */
   display: flex;
   width: 190px;
   flex-direction: column;
@@ -808,7 +808,8 @@ main td.neg { color: var(--ember); }
   letter-spacing: 0.1em;
   color: var(--muted);
 }
-.hero-floating-stat strong { font: 500 0.72rem var(--font-num); letter-spacing: 0.04em; }
+.hero-floating-stat strong { font: 500 0.78rem var(--font-num); letter-spacing: 0.04em; }
+.hero-floating-stat small { font: 400 0.6rem var(--font-ui); line-height: 1.45; letter-spacing: 0; text-transform: none; }
 @media (max-width: 1024px) {
   .hero-floating-stat { display: none; }
 }
