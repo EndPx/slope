@@ -7,7 +7,7 @@
  * sprints. The chosen pace carries over to Create.
  */
 import {useEffect, useState} from "react";
-import {useNavigate} from "react-router-dom";
+import {Link, useNavigate} from "react-router-dom";
 import {HeroFieldCanvas, PACE_COLOR, PACE_NAME} from "./HeroFieldCanvas";
 import {fetchPositions} from "./lib/subgraph";
 import {usePageTitle} from "./lib/usePageTitle";
@@ -17,7 +17,7 @@ const M = {slopePosition: "0xC7c6FaD1C2A0e8961E34D40c39C059ECE6dBB8Cc", explorer
 export function LandingScreen() {
   usePageTitle(null);
   const navigate = useNavigate();
-  const [stats, setStats] = useState<{fills: number; volume: number} | null>(null);
+  const [stats, setStats] = useState<{fills: number; volume: number; avgBps: number | null; graded: number} | null>(null);
   const [pace, setPace] = useState<number>(() => {
     const stored = Number(localStorage.getItem("pace"));
     return [0, 1, 2].includes(stored) ? stored : 1;
@@ -34,11 +34,19 @@ export function LandingScreen() {
     const load = async () => {
       try {
         const list = await fetchPositions();
-        if (!stop)
+        if (!stop) {
+          const graded = list
+            .filter((p) => p.benchmark?.improvementBps != null)
+            .map((p) => Number(p.benchmark!.improvementBps));
           setStats({
             fills: list.reduce((acc, p) => acc + p.fills.length, 0),
             volume: list.reduce((acc, p) => acc + Number(p.executedAmount) / 1e18, 0),
+            // honest mean across every graded schedule — losses included,
+            // nothing filtered; hidden entirely when the sample is too small
+            avgBps: graded.length >= 2 ? graded.reduce((t, v) => t + v, 0) / graded.length : null,
+            graded: graded.length,
           });
+        }
       } catch {
         if (!stop) setStats(null); // silent here: the numbers are a bonus, not the message
       }
@@ -54,22 +62,38 @@ export function LandingScreen() {
       <div className="grid gap-8 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)] lg:gap-12 items-center">
       <div>
         <h1 className="display" style={{fontSize: "clamp(2.4rem, 4.6vw, 3.6rem)", lineHeight: 1.02}}>
-          A big swap, executed slowly.
+          A big swap, without the price you'd pay for it.
         </h1>
         <p className="note" style={{fontSize: "1rem", marginTop: "1.1rem", lineHeight: 1.6, maxWidth: 470}}>
           You hold an order big enough to move the market. Slope breaks it into scheduled slices on the pace you
-          choose — each slice small enough to slip under the impact, each inside rails you set.
+          choose — each one small enough to slip under the impact, each inside the price rails you set.
         </p>
         <button className="act primary" style={{marginTop: "1.7rem", maxWidth: 260}} onClick={() => navigate("/create")}>
           Set a schedule
         </button>
-        <p className="note" style={{marginTop: "0.9rem"}}>
-          Live testnet: {stats !== null ? stats.volume.toFixed(0) : "…"} dETH routed across{" "}
-          <span className="num">{stats?.fills ?? "…"}</span> fills —{" "}
-          <a href={`${M.explorerUrl}/address/${M.slopePosition}`} target="_blank" rel="noreferrer">
-            view contract
-          </a>
-        </p>
+        {stats !== null && (
+          <p className="note" style={{marginTop: "0.9rem"}}>
+            Live testnet: {stats.volume.toFixed(0)} dETH across {stats.fills} fills
+            {stats.avgBps !== null && (
+              <>
+                {" "}— averaging{" "}
+                <span
+                  className="num"
+                  style={{color: stats.avgBps >= 0 ? "var(--patina)" : "var(--ember)"}}
+                >
+                  {stats.avgBps >= 0 ? "+" : "−"}
+                  {Math.abs(stats.avgBps).toFixed(1)} bps
+                </span>{" "}
+                vs the linear-TWAP benchmark across {stats.graded} schedules (
+                <Link to="/performance">breakdown</Link>)
+              </>
+            )}{" "}
+            ·{" "}
+            <a href={`${M.explorerUrl}/address/${M.slopePosition}`} target="_blank" rel="noreferrer">
+              view contract
+            </a>
+          </p>
+        )}
       </div>
 
       <div className="landing-stage">
