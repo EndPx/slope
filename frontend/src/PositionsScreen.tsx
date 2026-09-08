@@ -38,7 +38,7 @@ export function PositionsScreen() {
       }
     };
     load();
-    const stopPolling = startPolling(load, 30_000);
+    const stopPolling = startPolling(load, 60_000);
     return () => {
       stop = true;
       stopPolling();

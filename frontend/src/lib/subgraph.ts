@@ -15,6 +15,37 @@ const API_KEY = (import.meta.env.VITE_GRAPH_API_KEY as string | undefined) ?? ""
 let cooldownUntil = 0;
 const RATE_COOLDOWN_MS = 120_000;
 
+/** Burst control. The Studio endpoint rate-limits per second/minute (the
+ *  monthly quota sits far away), and a page load used to fire three or
+ *  four queries at once — boot probe, live status, status bar, screen —
+ *  twice over with two tabs open. Two defenses:
+ *  - singleFlight: concurrent identical queries share ONE request.
+ *  - paced(): whatever remains is sent through a gate that keeps at least
+ *    MIN_GAP_MS between request STARTS — never two at the same moment. */
+const MIN_GAP_MS = 900;
+let pacerTail: Promise<void> = Promise.resolve();
+let lastSentAt = 0;
+
+function paced<T>(run: () => Promise<T>): Promise<T> {
+  const gate = pacerTail.then(async () => {
+    const wait = lastSentAt + MIN_GAP_MS - Date.now();
+    if (wait > 0) await new Promise((resolve) => setTimeout(resolve, wait));
+    lastSentAt = Date.now();
+  });
+  pacerTail = gate.catch(() => {});
+  return gate.then(run);
+}
+
+const inflight = new Map<string, Promise<unknown>>();
+
+function singleFlight<T>(key: string, run: () => Promise<T>): Promise<T> {
+  const existing = inflight.get(key) as Promise<T> | undefined;
+  if (existing) return existing;
+  const p = paced(run).finally(() => inflight.delete(key));
+  inflight.set(key, p);
+  return p;
+}
+
 export async function gql<T>(query: string): Promise<T> {
   if (!API_KEY) throw new Error("VITE_GRAPH_API_KEY missing — the UI consumes live subgraph data; set it in .env");
   if (Date.now() < cooldownUntil) {
@@ -159,27 +190,33 @@ function parsePosition(raw: any): Position {
 }
 
 export async function fetchPosition(id: string): Promise<Position | null> {
-  const data = await gql<{positions: any[]}>(`{ positions(where: { id: "${id}" }) { ${POSITION_FIELDS} } }`);
-  return data.positions[0] ? parsePosition(data.positions[0]) : null;
+  return singleFlight(`position:${id}`, async () => {
+    const data = await gql<{positions: any[]}>(`{ positions(where: { id: "${id}" }) { ${POSITION_FIELDS} } }`);
+    return data.positions[0] ? parsePosition(data.positions[0]) : null;
+  });
 }
 
 export async function fetchPositionsByOwner(owner: string): Promise<Position[]> {
-  const data = await gql<{positions: any[]}>(
-    `{ positions(where: { owner: "${owner.toLowerCase()}" }) { ${POSITION_FIELDS} } }`,
-  );
-  return data.positions
-    .map(parsePosition)
-    .sort((a, b) => (BigInt(b.id) > BigInt(a.id) ? 1 : BigInt(b.id) < BigInt(a.id) ? -1 : 0));
+  return singleFlight(`owner:${owner}`, async () => {
+    const data = await gql<{positions: any[]}>(
+      `{ positions(where: { owner: "${owner.toLowerCase()}" }) { ${POSITION_FIELDS} } }`,
+    );
+    return data.positions
+      .map(parsePosition)
+      .sort((a, b) => (BigInt(b.id) > BigInt(a.id) ? 1 : BigInt(b.id) < BigInt(a.id) ? -1 : 0));
+  });
 }
 
 /** All indexed positions — public on-chain data, viewable without login.
  *  Sorted numerically client-side: entity ids are strings, so the graph's
  *  own id ordering is lexicographic ("9" > "11"). */
 export async function fetchPositions(): Promise<Position[]> {
-  const data = await gql<{positions: any[]}>(`{ positions { ${POSITION_FIELDS} } }`);
-  return data.positions
-    .map(parsePosition)
-    .sort((a, b) => (BigInt(b.id) > BigInt(a.id) ? 1 : BigInt(b.id) < BigInt(a.id) ? -1 : 0));
+  return singleFlight("positions", async () => {
+    const data = await gql<{positions: any[]}>(`{ positions { ${POSITION_FIELDS} } }`);
+    return data.positions
+      .map(parsePosition)
+      .sort((a, b) => (BigInt(b.id) > BigInt(a.id) ? 1 : BigInt(b.id) < BigInt(a.id) ? -1 : 0));
+  });
 }
 
 /** Compact aggregate: active count, executed volume, fills in 24h, head. */
@@ -191,22 +228,34 @@ export interface ChainSummary {
 }
 
 export async function fetchSummary(): Promise<ChainSummary> {
-  const cutoff = Math.floor(Date.now() / 1000) - 86_400;
-  const data = await gql<{positions: any[]; _meta: any}>(
-    `{ positions(orderBy: id) { isActive executedAmount fills(where: { timestamp_gt: "${cutoff}" }) { id } } _meta { block { number } } }`,
-  );
-  let activeCount = 0;
-  let executedVolume = 0n;
-  let fills24h = 0;
-  for (const p of data.positions) {
-    if (p.isActive) activeCount += 1;
-    executedVolume += BigInt(p.executedAmount);
-    fills24h += (p.fills ?? []).length;
-  }
-  return {activeCount, executedVolume, fills24h, indexedBlock: BigInt(data._meta.block.number)};
+  return singleFlight("summary", async () => {
+    const cutoff = Math.floor(Date.now() / 1000) - 86_400;
+    const data = await gql<{positions: any[]; _meta: any}>(
+      `{ positions(orderBy: id) { isActive executedAmount fills(where: { timestamp_gt: "${cutoff}" }) { id } } _meta { block { number } } }`,
+    );
+    let activeCount = 0;
+    let executedVolume = 0n;
+    let fills24h = 0;
+    for (const p of data.positions) {
+      if (p.isActive) activeCount += 1;
+      executedVolume += BigInt(p.executedAmount);
+      fills24h += (p.fills ?? []).length;
+    }
+    return {activeCount, executedVolume, fills24h, indexedBlock: BigInt(data._meta.block.number)};
+  });
 }
 
+/** Head block with a 5 s TTL: a page load asks for it twice (boot probe,
+ *  live status) and both deserve the same fresh answer, not two requests. */
+const HEAD_TTL_MS = 5_000;
+let headCache: {at: number; block: bigint} | null = null;
+
 export async function fetchHeadBlock(): Promise<bigint> {
-  const data = await gql<{_meta: any}>(`{ _meta { block { number } } }`);
-  return BigInt(data._meta.block.number);
+  if (headCache && Date.now() - headCache.at < HEAD_TTL_MS) return headCache.block;
+  const block = await singleFlight("head", async () => {
+    const data = await gql<{_meta: any}>(`{ _meta { block { number } } }`);
+    return BigInt(data._meta.block.number);
+  });
+  headCache = {at: Date.now(), block};
+  return block;
 }

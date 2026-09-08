@@ -8,6 +8,7 @@ import {useEffect, useState} from "react";
 import {useWallets} from "@privy-io/react-auth";
 import {useNavigate} from "react-router-dom";
 import {fetchPositionsByOwner, type Position} from "./lib/subgraph";
+import {startPolling} from "./lib/poll";
 import {fmtToken} from "./lib/format";
 import {SHAPE_COLOR, SHAPE_NAME} from "./CurvePreview";
 import {usePageTitle} from "./lib/usePageTitle";
@@ -58,10 +59,11 @@ export function PortfolioScreen() {
       }
     };
     load();
-    const t = setInterval(load, 30_000);
+    // startPolling, not a raw interval: hidden tabs stop querying.
+    const stopPolling = startPolling(load, 60_000);
     return () => {
       stop = true;
-      clearInterval(t);
+      stopPolling();
     };
   }, [address]);
 

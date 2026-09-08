@@ -40,16 +40,28 @@ The keeper is the subgraph's production consumer (track requirement: meaningful 
 
 ## Query Budget (dev key)
 
-The Studio dev endpoint allows roughly 3,000 queries/day — the quota is
-shared by every consumer of the key (keeper, frontend, ad-hoc scripts).
-Sustainable settings shipped in the repo:
+Two different limits apply, and confusing them cost us a debugging round:
+the **monthly quota** (≈100,000 queries/month on the dashboard — we have
+never come near it) and the **per-second/per-minute rate limit**, which is
+what actually returns HTTP 429. A page load used to fire three or four
+queries at once (boot probe, live status, status bar, screen data) —
+twice over with two tabs open — and that burst, colliding with the
+keeper's tick, is what tripped the rate limit. Sustainable settings
+shipped in the repo:
 
-- **Keeper**: polls every `KEEPER_POLL_INTERVAL_SECONDS` (default 30 s ≈
-  2,880 queries/day), backs off progressively on HTTP 429 (1 → 5 → 15 min,
-  capped), and stays fail-closed the whole time. Set the env to 60 s on
-  quiet days.
-- **Frontend**: 20–30 s per screen, pauses while the tab is hidden, and
-  backs off 120 s on 429. The live status chip polls once a minute.
+- **Keeper**: ONE combined GraphQL query per tick (positions + latest
+  fill + recent skips + `_meta` in a single document), every
+  `KEEPER_POLL_INTERVAL_SECONDS` (default 30 s ≈ 2,880 queries/day),
+  backing off progressively on HTTP 429 (1 → 5 → 15 min, capped),
+  fail-closed throughout.
+- **Frontend**: every subgraph poller runs at 60 s and pauses while the
+  tab is hidden (Portfolio included). All queries pass through two burst
+  guards in `lib/subgraph.ts`: **single-flight** (concurrent identical
+  queries share one request) and a **pacer** that keeps ≥900 ms between
+  request starts, so a page load sends at most a few spaced requests
+  instead of a simultaneous volley. The head-block query is cached for
+  5 s (boot probe and live status share one). 429 backs the display
+  layer off for 120 s.
 
 For demos: check the remaining quota before recording, and stop the keeper
 (`Ctrl+C`) when it is not needed — no keeper, no fills.
