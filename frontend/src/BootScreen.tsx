@@ -18,6 +18,7 @@
  */
 import {useEffect, useState} from "react";
 import {fetchHeadBlock} from "./lib/subgraph";
+import {SlopeMark} from "./LogoSlope";
 
 const SHOW_AFTER_MS = 300;
 const STALL_MS = 6000;
@@ -127,24 +128,7 @@ export function BootScreen(props: {
   return (
     <div className={`boot-screen${props.leaving ? " leaving" : ""}`} role="status" aria-live="polite">
       <div className="boot-box">
-        {/* Placeholder mark — three slices falling along the curve, the fill
-          * ball at the end. Replace with the generated logo asset. */}
-        <svg className="boot-mark" viewBox="0 0 72 72" fill="none" aria-hidden="true">
-          <defs>
-            <linearGradient id="boot-mark-g" x1="10" y1="14" x2="60" y2="58" gradientUnits="userSpaceOnUse">
-              <stop stopColor="var(--patina)" />
-              <stop offset="1" stopColor="var(--blue)" />
-            </linearGradient>
-          </defs>
-          <path
-            d="M12 14 C 32 18, 44 34, 58 56"
-            stroke="url(#boot-mark-g)"
-            strokeWidth="5"
-            strokeLinecap="round"
-            strokeDasharray="24 10 14 10"
-          />
-          <circle cx="58" cy="56" r="4.5" fill="var(--paper)" />
-        </svg>
+        <SlopeMark size={64} className="boot-mark" />
         <p className="boot-name">slope</p>
         {statusLine && <p className="boot-status">{statusLine}</p>}
         {!walletFailed && !subgraphFailed ? (

@@ -23,6 +23,7 @@ import {ActivityScreen} from "./ActivityScreen";
 import {FaucetPanel} from "./FaucetPanel";
 import {StatusBar} from "./StatusBar";
 import {BootScreen, useBoot} from "./BootScreen";
+import {SlopeMark} from "./LogoSlope";
 import {fetchHeadBlock} from "./lib/subgraph";
 import {startPolling} from "./lib/poll";
 import {usePageTitle} from "./lib/usePageTitle";
@@ -142,6 +143,7 @@ export default function App() {
       <header className="chrome">
         <div className="container">
           <NavLink to="/" className="wordmark" aria-label="Slope home">
+            <SlopeMark size={24} />
             slope<span className="livedot">●</span>
           </NavLink>
         <nav aria-label="Screens">

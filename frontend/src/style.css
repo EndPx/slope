@@ -106,6 +106,9 @@ main .chrome-right {
 }
 
 main .wordmark {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
   font: 700 1.08rem var(--font-ui);
   letter-spacing: -0.02em;
   color: var(--paper);

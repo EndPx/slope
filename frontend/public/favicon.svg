@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64">
+  <!-- Slope favicon: the mark on the ink tile. Hexes are fixed on purpose —
+       a favicon file cannot read the page's CSS variables. -->
+  <rect width="64" height="64" rx="14" fill="#070b13"/>
+  <g transform="translate(7 14.5) scale(0.7)" fill="none" stroke="#e9edf5" stroke-width="4.2" stroke-linecap="round">
+    <path d="M 6 6 C 10.92 6.89, 15.24 8.19, 19.25 9.88"/>
+    <path d="M 26.74 13.68 C 30.52 15.93, 34.19 18.59, 38.03 21.66"/>
+    <path d="M 44.49 27.02 C 47.73 29.78, 51.17 32.79, 54.98 36.06"/>
+    <circle cx="69.07" cy="47.89" r="2.9" fill="#e9edf5" stroke="none"/>
+  </g>
+</svg>
