@@ -11,6 +11,7 @@ import {createWalletClient, custom, encodeFunctionData, http, parseAbi, createPu
 import {baseSepolia} from "viem/chains";
 import MANIFEST from "./manifest.json";
 import {RulerChart} from "./RulerChart";
+import {AquaTrace} from "./AquaTrace";
 import {SHAPE_COLOR, SHAPE_NAME} from "./CurvePreview";
 import {PlotMeta} from "./PlotMeta";
 import {fetchPosition, type Position} from "./lib/subgraph";
@@ -187,6 +188,15 @@ export function ExecutionScreen(props: {positionId: bigint}) {
         skips={position.skips}
         />
       </div>
+
+      {position.fills.length > 0 && (
+        <AquaTrace
+          label={`Latest fill #${position.fills[position.fills.length - 1].id.split("-")[1] ?? ""}`}
+          txHash={position.fills[position.fills.length - 1].txHash}
+          decimalsIn={position.decimalsIn}
+          decimalsOut={position.decimalsOut}
+        />
+      )}
 
       <div className="strip">
         <div className="grow">
