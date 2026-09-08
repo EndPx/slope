@@ -53,7 +53,11 @@ export function PositionsScreen() {
       <StatusBar />
       <div className="flex items-center gap-3 flex-wrap">
         <div>
-          <p className="meta">| OWNERSHIP RESOLVED FROM THE CONNECTED WALLET</p>
+          <p className="meta">
+            {wallet
+              ? "| OWNERSHIP RESOLVED FROM THE CONNECTED WALLET"
+              : "| ALL SCHEDULES · PUBLIC ON-CHAIN DATA"}
+          </p>
           <h2 className="display num" style={{fontSize: "1.4rem", fontWeight: 600, letterSpacing: 0}}>
             Schedules
           </h2>

@@ -363,7 +363,7 @@ export function CreateScreen(props: {onCreated: (id: bigint) => void}) {
       </div>
 
       <div>
-        <div className="plot" style={{padding: 0, minWidth: 0}}>
+        <div className="plot" style={{padding: 0, minWidth: 0, width: "fit-content", maxWidth: "100%"}}>
           <PlotMeta
             surface="SCHEDULE_PREVIEW"
             axis="CUMULATIVE_BUDGET / TIME"
