@@ -56,6 +56,7 @@ Will be linked here once deployed — application, subgraph, and hosted endpoint
 - [`prompts/`](prompts/README.md) — the material AI-assisted specifications and prompts: the initial handoff, each implementation-step directive, and every human review that produced a numbered design revision — committed chronologically per the ETHGlobal transparency requirement.
 - [`FEEDBACK-PRIVY.md`](FEEDBACK-PRIVY.md) — our builder feedback for the Privy track, from deep production usage of conditional signers, key quorums, and the policy engine during this hackathon.
 - [`FEEDBACK-AQUA.md`](FEEDBACK-AQUA.md) — our builder feedback for the 1inch Aqua track: event-decoding pitfalls of `@1inch/aqua-sdk` on a Base Sepolia deployment, verified against live fill receipts.
+- [`FEEDBACK-GRAPH.md`](FEEDBACK-GRAPH.md) — our builder feedback for The Graph track: the two-quota reality (monthly dashboard counter vs the daily request bucket that actually returns 429s), lexicographic id ordering, redeploy/archive workflow, and what the keeper + UI consume from the versioned endpoint.
 
 ## Planned Workspace
 
