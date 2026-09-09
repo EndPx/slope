@@ -8,14 +8,9 @@
  * delegation, and the pill never shows one.
  */
 import {useEffect, useRef, useState} from "react";
-import {formatUnits} from "viem";
 import {useWalletBalances} from "./lib/useWalletBalances";
+import {fmtAmount} from "./lib/format";
 import {FaucetPanel} from "./FaucetPanel";
-
-function trimZeros(value: string): string {
-  const trimmed = value.replace(/(\.\d*?)0+$/, "$1").replace(/\.$/, "");
-  return trimmed === "" ? "0" : trimmed;
-}
 
 function Chevron({open}: {open: boolean}) {
   return (
@@ -109,7 +104,7 @@ export function AccountChip(props: {
           <div className="acct-row">
             <span className="acct-label">Wallet</span>
             <span className="num">
-              {balances.eth !== null ? `${trimZeros(formatUnits(balances.eth, 18))} ETH` : "…"}
+              {balances.eth !== null ? `${fmtAmount(balances.eth, 18)} ETH` : "…"}
             </span>
           </div>
           <div className="acct-addr">

@@ -9,6 +9,14 @@ export function fmtToken(raw: bigint, decimals: number, maxFrac = 4): string {
   return n.toLocaleString("en-US", {maximumFractionDigits: maxFrac});
 }
 
+/** Compact token amounts for UI rows. A max-approval-scale allowance
+ *  (2^256 territory) reads as what it means — unlimited — instead of a
+ *  sixty-digit number. */
+export function fmtAmount(raw: bigint, decimals: number): string {
+  if (raw > 10n ** BigInt(decimals + 30)) return "unlimited";
+  return fmtToken(raw, decimals, 4);
+}
+
 export function fmtPrice(raw18: bigint | null): string {
   if (raw18 === null) return "—";
   const n = Number(formatUnits(raw18, 18));

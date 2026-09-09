@@ -7,10 +7,11 @@
  */
 import {useState} from "react";
 import {useWallets} from "@privy-io/react-auth";
-import {createWalletClient, custom, encodeFunctionData, formatUnits, parseAbi} from "viem";
+import {createWalletClient, custom, encodeFunctionData, parseAbi} from "viem";
 import {baseSepolia} from "viem/chains";
 import MANIFEST from "./manifest.json";
 import {useCustody} from "./lib/useCustody";
+import {fmtAmount} from "./lib/format";
 
 const M = MANIFEST as {slopePosition: `0x${string}`; dETH: `0x${string}`; chainId: number; explorerUrl: string};
 const MINT_AMOUNT = 10n * 10n ** 18n;
@@ -58,9 +59,9 @@ export function FaucetPanel({onClose}: {onClose: () => void}) {
         These are testnet tokens minted for trying Slope out — there is no real liquidity behind them.
       </p>
       <p className="note">
-        Inventory <span className="num">{custody.balance !== null ? formatUnits(custody.balance, 18) : "…"}</span> dETH
+        Inventory <span className="num">{custody.balance !== null ? fmtAmount(custody.balance, 18) : "…"}</span> dETH
         &nbsp;&nbsp;Allowance to the contract{" "}
-        <span className="num">{custody.allowance !== null ? formatUnits(custody.allowance, 18) : "…"}</span> dETH
+        <span className="num">{custody.allowance !== null ? fmtAmount(custody.allowance, 18) : "…"}</span>
       </p>
       <button className="act" disabled={busy || !wallet} onClick={mint}>
         {busy ? "Minting…" : "Mint 10 dETH"}

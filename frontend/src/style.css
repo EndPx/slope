@@ -1034,3 +1034,13 @@ main .acct-chain-dot {
   background: var(--patina);
   box-shadow: 0 0 6px rgba(69, 196, 216, 0.5);
 }
+/* The faucet panel lives INSIDE the account popover — inline, not floating. */
+main .acct-pop .faucet {
+  position: static;
+  width: auto;
+  padding: 0.55rem 0.6rem;
+  border-radius: 9px;
+  background: var(--panel-2);
+  box-shadow: none;
+  gap: 0.35rem;
+}

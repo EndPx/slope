@@ -13,7 +13,7 @@ import {CurvePreview, SHAPE_COLOR, SHAPE_NAME} from "./CurvePreview";
 import {PlotMeta} from "./PlotMeta";
 import {useCustody} from "./lib/useCustody";
 import {estimateSchedule} from "./lib/schedule-estimate";
-import {fmtToken} from "./lib/format";
+import {fmtAmount, fmtToken} from "./lib/format";
 import {usePageTitle} from "./lib/usePageTitle";
 import type {Shape} from "./lib/curve";
 
@@ -384,7 +384,7 @@ export function CreateScreen() {
             <p className="label">Custody check</p>
             <p className="note">
               Wallet inventory <span className="num">{formatUnits(custody.balance, 18)}</span> dETH. Contract
-              allowance <span className="num">{formatUnits(custody.allowance ?? 0n, 18)}</span> dETH —{" "}
+              allowance <span className="num">{fmtAmount(custody.allowance ?? 0n, 18)}</span> dETH —{" "}
               {custody.allowance !== null && custody.allowance >= budget
                 ? "already covers this schedule."
                 : `Create includes a fresh approval of ${amount} dETH.`}
