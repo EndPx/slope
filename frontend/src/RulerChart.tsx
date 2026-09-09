@@ -8,6 +8,7 @@
 import {useEffect, useRef} from "react";
 import {Shape, progress, WAD} from "./lib/curve";
 import {SHAPE_COLOR} from "./CurvePreview";
+import {fmtToken} from "./lib/format";
 import type {Fill, Skip} from "./lib/subgraph";
 
 const M = {left: 44, right: 30, top: 24, bottom: 30};
@@ -24,6 +25,8 @@ export function RulerChart(props: {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const propsRef = useRef(props);
   propsRef.current = props;
+  // Hover state — canvas-relative x; the crosshair and readout ride it.
+  const hoverRef = useRef<{x: number} | null>(null);
 
   useEffect(() => {
     const canvas = canvasRef.current!;
@@ -159,6 +162,72 @@ export function RulerChart(props: {
             : "settled"
           : `now · ${fmtOffset(now - start)}`;
       ctx.fillText(label, nowX + (nowX > w - 90 ? -6 : 6), M.top + 8);
+
+      // Hover: crosshair at the cursor's moment + dots on both curves + the
+      // readout (planned vs executed vs event counts), drawn last.
+      const hover = hoverRef.current;
+      if (hover) {
+        const hoverFrac = Math.min(1, Math.max(0, (hover.x - M.left) / innerW));
+        const hoverUnix = start + hoverFrac * duration;
+        let actFrac = 0;
+        for (const pt of cum) {
+          if (pt.unix <= hoverUnix) actFrac = pt.frac;
+          else break;
+        }
+        const planFrac =
+          Number(progress(BigInt(Math.round(hoverFrac * duration)), BigInt(duration), p.curveShape as Shape)) /
+          Number(WAD);
+        let fillCount = 0;
+        for (const f of p.fills) if (Number(f.timestamp) <= hoverUnix) fillCount += 1;
+        let skipCount = 0;
+        for (const s of p.skips) if (Number(s.timestamp) <= hoverUnix) skipCount += 1;
+
+        const crossX = M.left + hoverFrac * innerW;
+        ctx.strokeStyle = "#1d3138";
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(crossX, M.top);
+        ctx.lineTo(crossX, rulerY);
+        ctx.stroke();
+        // planned dot (shape color) above actual dot (paper)
+        ctx.beginPath();
+        ctx.arc(crossX, yAt(planFrac), 3, 0, Math.PI * 2);
+        ctx.fillStyle = SHAPE_COLOR[p.curveShape];
+        ctx.fill();
+        ctx.strokeStyle = "#070b13";
+        ctx.lineWidth = 1.25;
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.arc(crossX, yAt(actFrac), 3.5, 0, Math.PI * 2);
+        ctx.fillStyle = "#f4f8ff";
+        ctx.fill();
+        ctx.stroke();
+
+        const lines = [
+          `T+${fmtOffset(Math.round(hoverUnix - start))}`,
+          `planned ${(planFrac * 100).toFixed(1)}% · ${fmtToken(BigInt(Math.round(planFrac * Number(p.totalBudget))), 18)} dETH`,
+          `executed ${(actFrac * 100).toFixed(1)}% · ${fmtToken(BigInt(Math.round(actFrac * Number(p.totalBudget))), 18)} dETH`,
+          `${fillCount} fill${fillCount === 1 ? "" : "s"} · ${skipCount} skip${skipCount === 1 ? "" : "s"}`,
+        ];
+        ctx.font = "10px 'IBM Plex Mono', monospace";
+        const tw = Math.max(...lines.map((line) => ctx.measureText(line).width)) + 16;
+        const th = lines.length * 13 + 10;
+        let bx = crossX + 14;
+        if (bx + tw > w - 4) bx = crossX - tw - 14;
+        const by = M.top + 2;
+        ctx.beginPath();
+        ctx.roundRect(bx, by, tw, th, 8);
+        ctx.fillStyle = "rgba(7, 11, 19, 0.92)";
+        ctx.fill();
+        ctx.strokeStyle = "#1d3138";
+        ctx.stroke();
+        ctx.textAlign = "left";
+        lines.forEach((line, i) => {
+          ctx.fillStyle = i === 0 ? "#e9edf5" : "#8b9bb0";
+          ctx.fillText(line, bx + 8, by + 18 + i * 13);
+        });
+        ctx.textAlign = "center";
+      }
     };
 
     const resize = () => {
@@ -174,15 +243,34 @@ export function RulerChart(props: {
     const ro = new ResizeObserver(resize);
     ro.observe(canvas);
     const clock = setInterval(draw, 1000);
+    // Hover tracking — crosshair follows every move, clears on leave. The
+    // per-second redraw keeps the readout alive while hovered.
+    const onMove = (e: MouseEvent) => {
+      const rect = canvas.getBoundingClientRect();
+      hoverRef.current = {x: e.clientX - rect.left};
+      draw();
+    };
+    const onLeave = () => {
+      hoverRef.current = null;
+      draw();
+    };
+    canvas.addEventListener("mousemove", onMove);
+    canvas.addEventListener("mouseleave", onLeave);
     return () => {
       ro.disconnect();
       clearInterval(clock);
+      canvas.removeEventListener("mousemove", onMove);
+      canvas.removeEventListener("mouseleave", onLeave);
     };
   }, []);
 
   return (
     <div className="plot">
-      <canvas ref={canvasRef} style={{height: 260}} aria-label="Execution ruler — planned versus actual" />
+      <canvas
+        ref={canvasRef}
+        style={{height: 260, cursor: "crosshair"}}
+        aria-label="Execution ruler — planned versus actual, hover for details"
+      />
     </div>
   );
 }
