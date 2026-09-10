@@ -4,7 +4,8 @@
  * language ("allocate", "pace", "rails") — internal names appear only in the
  * small print and the explorer link.
  */
-import {useEffect, useMemo, useRef, useState} from "react";
+import {useEffect, useMemo, useRef, useState, Fragment} from "react";
+import {useNavigate} from "react-router-dom";
 import {useLogin, useSigners, useWallets} from "@privy-io/react-auth";
 import {createWalletClient, custom, encodeFunctionData, formatUnits, http, parseAbi, parseUnits, createPublicClient} from "viem";
 import {baseSepolia} from "viem/chains";
@@ -60,6 +61,16 @@ const DURATIONS = [
   {label: "30 min", seconds: 1800},
 ];
 
+type StepKey = "faucet" | "approve" | "create" | "delegate";
+type StepState = "idle" | "active" | "done" | "failed";
+
+const STEP_LABEL: Record<StepKey, string> = {
+  faucet: "Mint demo inventory",
+  approve: "Approve dETH spending",
+  create: "Create the schedule on-chain",
+  delegate: "Delegate execution to the keeper",
+};
+
 export function CreateScreen() {
   usePageTitle("Create a schedule");
   const {login} = useLogin();
@@ -83,10 +94,7 @@ export function CreateScreen() {
   const [ceiling, setCeiling] = useState("10000");
   const [slippagePct, setSlippagePct] = useState("5.00");
   const [minSlicePct, setMinSlicePct] = useState("2");
-  const [status, setStatus] = useState<{kind: "idle" | "busy" | "ok" | "err"; text: string}>({
-    kind: "idle",
-    text: "",
-  });
+  const navigate = useNavigate();
   const [createdId, setCreatedId] = useState<bigint | null>(null);
   // Sign-in-to-create: the full form works without a wallet; signing in
   // resumes straight into the create flow that was requested.
@@ -186,98 +194,145 @@ export function CreateScreen() {
   };
   const publicClient = createPublicClient({chain: baseSepolia, transport: http(M.publicRpcUrl)});
 
-  async function createSchedule() {
-    if (!wallet || !inputsValid) return;
+  // ---- The deployment flow, as visible steps. Wallet popups (Privy sign
+  // requests) can fail at any stage, so every stage is separately visible
+  // and retryable: mint (when inventory is short), approve (when allowance
+  // is short), create, delegate. Each failure freezes the list at the
+  // failed step with the reason; retry resumes from there.
+  const [steps, setSteps] = useState<Array<{key: StepKey; state: StepState; detail: string}>>([]);
+  const [running, setRunning] = useState(false);
+  // Local completion markers so a retry skips finished steps without
+  // waiting for the custody poll to catch up with the chain.
+  const mintedRef = useRef(0n);
+  const approvedRef = useRef(0n);
+
+  async function runFlow() {
+    if (!wallet || !inputsValid || running) return;
+    setRunning(true);
     try {
       const wc = await walletClient();
       const [address] = await wc.getAddresses();
-      setStatus({kind: "busy", text: `Minting ${amount} dETH of demo inventory for this wallet…`});
-      await wc.sendTransaction({
-        account: address,
-        to: M.dETH,
-        data: encodeFunctionData({abi: ABI, functionName: "mint", args: [address, budget]}),
-      });
 
-      if (custody.allowance === null || custody.allowance < budget) {
-        setStatus({kind: "busy", text: "Approving the contract to pull slices as scheduled…"});
-        await wc.sendTransaction({
-          account: address,
-          to: M.dETH,
-          data: encodeFunctionData({abi: ABI, functionName: "approve", args: [M.slopePosition, budget]}),
-        });
+      const plan: StepKey[] = [];
+      if (createdId === null) {
+        if (mintedRef.current < budget && (custody.balance === null || custody.balance < budget)) plan.push("faucet");
+        if (approvedRef.current < budget && (custody.allowance === null || custody.allowance < budget)) plan.push("approve");
+        plan.push("create");
+      }
+      plan.push("delegate");
+
+      // Keep finished steps from a previous attempt visible.
+      setSteps((prev) => {
+        const doneKeys = new Map(prev.filter((s) => s.state === "done").map((s) => [s.key, s]));
+        return plan.map((key) => doneKeys.get(key) ?? {key, state: "idle" as StepState, detail: ""});
+      });
+      const setStep = (key: StepKey, patch: {state?: StepState; detail?: string}) =>
+        setSteps((list) => list.map((s) => (s.key === key ? {...s, ...patch} : s)));
+      const activate = (key: StepKey) =>
+        setSteps((list) =>
+          list.map((s) => (s.key === key ? {...s, state: "active"} : s.state === "active" ? {...s, state: "idle"} : s)),
+        );
+
+      let id = createdId;
+      for (const key of plan) {
+        activate(key);
+        try {
+          if (key === "faucet") {
+            await wc.sendTransaction({
+              account: address,
+              to: M.dETH,
+              data: encodeFunctionData({abi: ABI, functionName: "mint", args: [address, budget]}),
+            });
+            mintedRef.current = budget;
+            custody.reload();
+          } else if (key === "approve") {
+            const hash = await wc.sendTransaction({
+              account: address,
+              to: M.dETH,
+              data: encodeFunctionData({abi: ABI, functionName: "approve", args: [M.slopePosition, budget]}),
+            });
+            await publicClient.waitForTransactionReceipt({hash});
+            approvedRef.current = budget;
+            custody.reload();
+          } else if (key === "create") {
+            const hash = await wc.sendTransaction({
+              account: address,
+              to: M.slopePosition,
+              data: encodeFunctionData({
+                abi: ABI,
+                functionName: "createPosition",
+                args: [
+                  {
+                    tokenIn: M.dETH,
+                    tokenOut: M.dUSD,
+                    totalBudget: budget,
+                    minFillAmount: minFill,
+                    duration: BigInt(duration.seconds),
+                    curveShape: pace,
+                    minPrice: floorRaw,
+                    maxPrice: ceilingRaw,
+                    maxSlippageBps: slippageBps,
+                  },
+                  {
+                    router: "0x054F6A7CE03fdEB7814977B0FE7017cc5B2d7DA2",
+                    order: {maker: SEED_MAKER as `0x${string}`, traits: AQUA_ORDER_TRAITS, data: SEED_PROGRAM as `0x${string}`},
+                    takerTraitsAndData: TAKER_BLOB,
+                  },
+                ],
+              }),
+            });
+            const receipt = await publicClient.waitForTransactionReceipt({hash});
+            const created = receipt.logs.find((l) => l.address.toLowerCase() === M.slopePosition.toLowerCase());
+            if (!created) throw new Error("ScheduleCreated event not found in the receipt");
+            id = BigInt(created.topics[1] as string);
+            setCreatedId(id);
+          } else {
+            const response = await fetch(`${KEEPER_URL}/delegate`, {
+              method: "POST",
+              headers: {"Content-Type": "application/json"},
+              body: JSON.stringify({
+                positionId: id!.toString(),
+                owner: wallet.address,
+                budgetRaw: budget.toString(),
+                expirySeconds: (Math.floor(Date.now() / 1000) + duration.seconds + 86_400).toString(),
+              }),
+            });
+            if (!response.ok) throw new Error(`the keeper responded HTTP ${response.status}`);
+            const {signerId, policyId} = (await response.json()) as {signerId: string; policyId: string};
+            await addSigners({
+              address: wallet.address as `0x${string}`,
+              signers: [{signerId, policyIds: [policyId]}],
+            });
+          }
+          setStep(key, {state: "done"});
+        } catch (e: any) {
+          const message = e?.shortMessage ?? e?.message ?? "unknown error";
+          const wrap: Record<StepKey, string> = {
+            faucet: `Mint didn't go through — ${message}`,
+            approve: `The approval didn't complete — ${message}. Nothing was spent.`,
+            create: `The schedule wasn't recorded — ${message}.`,
+            delegate: `Delegation didn't complete — ${message}. The schedule is safe on-chain — retry below.`,
+          };
+          setStep(key, {state: "failed", detail: wrap[key]});
+          setRunning(false);
+          return;
+        }
       }
 
-      setStatus({kind: "busy", text: "Recording the schedule on-chain…"});
-      const hash = await wc.sendTransaction({
-        account: address,
-        to: M.slopePosition,
-        data: encodeFunctionData({
-          abi: ABI,
-          functionName: "createPosition",
-          args: [
-            {
-              tokenIn: M.dETH,
-              tokenOut: M.dUSD,
-              totalBudget: budget,
-              minFillAmount: minFill,
-              duration: BigInt(duration.seconds),
-              curveShape: pace,
-              minPrice: floorRaw,
-              maxPrice: ceilingRaw,
-              maxSlippageBps: slippageBps,
-            },
-            {
-              router: "0x054F6A7CE03fdEB7814977B0FE7017cc5B2d7DA2",
-              order: {maker: SEED_MAKER as `0x${string}`, traits: AQUA_ORDER_TRAITS, data: SEED_PROGRAM as `0x${string}`},
-              takerTraitsAndData: TAKER_BLOB,
-            },
-          ],
-        }),
-      });
-      const receipt = await publicClient.waitForTransactionReceipt({hash});
-      const created = receipt.logs.find((l) => l.address.toLowerCase() === M.slopePosition.toLowerCase());
-      if (!created) throw new Error("ScheduleCreated event not found in receipt");
-      const id = BigInt(created.topics[1] as string);
-      setCreatedId(id);
-      setStatus({kind: "ok", text: `Schedule #${id} is live.`});
+      // Live and delegated — show it on the positions side.
+      navigate(`/positions/${id!.toString()}`);
     } catch (e: any) {
-      setStatus({kind: "err", text: `The schedule wasn't recorded — ${e.shortMessage ?? e.message}. Nothing was delegated; try again.`});
+      setSteps([{key: "create", state: "failed", detail: `The wallet didn't connect — ${e?.shortMessage ?? e?.message}`}]);
+    } finally {
+      setRunning(false);
     }
   }
 
-  async function delegateExecution() {
-    if (createdId === null || !wallet) return;
-    try {
-      setStatus({kind: "busy", text: "Requesting a scoped signing key for this schedule…"});
-      const response = await fetch(`${KEEPER_URL}/delegate`, {
-        method: "POST",
-        headers: {"Content-Type": "application/json"},
-        body: JSON.stringify({
-          positionId: createdId.toString(),
-          owner: wallet.address,
-          budgetRaw: budget.toString(),
-          expirySeconds: (Math.floor(Date.now() / 1000) + duration.seconds + 86_400).toString(),
-        }),
-      });
-      const {signerId, policyId} = (await response.json()) as {signerId: string; policyId: string};
-      setStatus({kind: "busy", text: "Confirm the signing consent to hand execution to the keeper…"});
-      await addSigners({
-        address: wallet.address as `0x${string}`,
-        signers: [{signerId, policyIds: [policyId]}],
-      });
-      setStatus({kind: "ok", text: "Delegated — the keeper executes slices as scheduled. No further approvals needed."});
-    } catch (e: any) {
-      setStatus({kind: "err", text: `Delegation didn't complete — ${e.shortMessage ?? e.message}. The schedule is safe on-chain; you can retry.`});
-    }
-  }
-
-  const busy = status.kind === "busy";
-
-  // Resume into the create flow once the requested sign-in has a wallet.
+  // Resume into the flow once the requested sign-in has a wallet.
   useEffect(() => {
     if (!authenticated || !wantCreateRef.current) return;
     wantCreateRef.current = false;
-    if (createdId === null) createSchedule();
+    runFlow();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [authenticated]);
 
@@ -395,17 +450,36 @@ export function CreateScreen() {
           </div>
         )}
 
+        {steps.length > 0 && (
+          <ol className="steps">
+            {steps.map((s) => (
+              <Fragment key={s.key}>
+                <li className={`step ${s.state}`}>
+                  <span className="step-mark">
+                    {s.state === "done" ? "✓" : s.state === "failed" ? "✕" : s.state === "active" ? "●" : "○"}
+                  </span>
+                  <span>
+                    {STEP_LABEL[s.key]}
+                    {s.state === "active" ? " — confirm in your wallet if asked" : ""}
+                  </span>
+                </li>
+                {s.state === "failed" && s.detail && <li className="step-detail">{s.detail}</li>}
+              </Fragment>
+            ))}
+          </ol>
+        )}
+
         <div style={{marginTop: "auto", paddingTop: "0.6rem"}}>
           {authenticated ? (
-            createdId === null ? (
-              <button className="act act-ember" disabled={!inputsValid || busy} onClick={createSchedule}>
-                {busy ? "Working…" : "Deploy execution schedule"}
-              </button>
-            ) : (
-              <button className="act primary" disabled={busy} onClick={delegateExecution}>
-                Delegate execution
-              </button>
-            )
+            <button className="act act-ember" disabled={!inputsValid || running} onClick={runFlow}>
+              {running
+                ? "Working…"
+                : steps.some((s) => s.state === "failed")
+                  ? "Retry from the failed step"
+                  : createdId !== null
+                    ? "Delegate execution"
+                    : "Deploy execution schedule"}
+            </button>
           ) : (
             <button
               className="act primary"
@@ -417,9 +491,6 @@ export function CreateScreen() {
             >
               Sign in to create
             </button>
-          )}
-          {status.text && (
-            <p className={`note ${status.kind === "err" ? "err" : status.kind === "ok" ? "ok" : ""}`}>{status.text}</p>
           )}
         </div>
       </div>
