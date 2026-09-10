@@ -26,7 +26,9 @@ const M = MANIFEST as {
   chainId: number;
   publicRpcUrl: string;
 };
-const KEEPER_URL = "http://localhost:8787";
+// The keeper runs on the position owner's machine during the demo; a
+// hosted deployment can point this at its tunnel/URL via env.
+const KEEPER_URL = (import.meta.env.VITE_KEEPER_URL as string | undefined) ?? "http://localhost:8787";
 
 const ABI = parseAbi([
   "function mint(address to,uint256 amount)",
