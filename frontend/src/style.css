@@ -1073,3 +1073,8 @@ main .step-detail {
   font: 500 0.72rem/1.45 var(--font-ui);
   margin-left: 1.45rem;
 }
+main .log .log-tx {
+  font-size: 0.62rem;
+  opacity: 0.65;
+}
+main .log .log-tx:hover { opacity: 1; }

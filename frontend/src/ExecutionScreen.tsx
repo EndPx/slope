@@ -264,7 +264,19 @@ export function ExecutionScreen(props: {positionId: bigint}) {
               {events.map((ev) =>
                 ev.kind === "fill" ? (
                   <tr key={ev.fill.id}>
-                    <td className="num">{fmtClock(ev.fill.timestamp)}</td>
+                    <td className="num">
+                      {fmtClock(ev.fill.timestamp)}
+                      <br />
+                      <a
+                        className="linklike log-tx"
+                        href={`${M.explorerUrl}/tx/${ev.fill.txHash}`}
+                        target="_blank"
+                        rel="noreferrer"
+                        title="View this fill on Basescan"
+                      >
+                        {ev.fill.txHash.slice(0, 6)}…{ev.fill.txHash.slice(-4)}
+                      </a>
+                    </td>
                     <td>
                       <span className="chip patina">Filled</span>
                     </td>
@@ -283,7 +295,19 @@ export function ExecutionScreen(props: {positionId: bigint}) {
                   </tr>
                 ) : (
                   <tr key={ev.skip.id} className="held">
-                    <td className="num">{fmtClock(ev.skip.timestamp)}</td>
+                    <td className="num">
+                      {fmtClock(ev.skip.timestamp)}
+                      <br />
+                      <a
+                        className="linklike log-tx"
+                        href={`${M.explorerUrl}/tx/${ev.skip.txHash}`}
+                        target="_blank"
+                        rel="noreferrer"
+                        title="View this hold on Basescan"
+                      >
+                        {ev.skip.txHash.slice(0, 6)}…{ev.skip.txHash.slice(-4)}
+                      </a>
+                    </td>
                     <td className="held-cell" colSpan={5}>
                       <span className="chip ember">Held</span>{" "}
                       <span className="held-head">{reasonCopy(ev.skip.reason)[0]}</span>{" "}
