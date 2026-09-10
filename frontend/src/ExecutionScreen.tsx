@@ -167,6 +167,21 @@ export function ExecutionScreen(props: {positionId: bigint}) {
         <span className="note num">
           {fmtToken(position.totalBudget, 18)} dETH → dUSD over {fmtDuration(position.duration)}
         </span>
+        {position.creationTx && (
+          <span className="note num">
+            created{" "}
+            <a
+              className="linklike"
+              href={`${M.explorerUrl}/tx/${position.creationTx}`}
+              target="_blank"
+              rel="noreferrer"
+              title="View the schedule's creation transaction on Basescan"
+            >
+              {position.creationTx.slice(0, 10)}…{position.creationTx.slice(-8)}
+            </a>
+            {position.creationBlock > 0n && <> · block <span>{position.creationBlock.toString()}</span></>}
+          </span>
+        )}
       </div>
 
       <div className="plot" style={{padding: 0}}>
