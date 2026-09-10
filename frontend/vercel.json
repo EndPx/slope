@@ -1,4 +1,6 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
+  "framework": "vite",
+  "installCommand": "npm install --include=dev",
   "rewrites": [{ "source": "/(.*)", "destination": "/index.html" }]
 }
