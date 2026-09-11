@@ -81,12 +81,17 @@ export function RulerChart(props: {
       ctx.setLineDash([]);
       ctx.globalAlpha = 1;
 
-      // Actual cumulative execution — paper line through the fills.
+      // Actual cumulative execution — an honest step path: flat between
+      // fills (nothing executes in between), a vertical cliff at each fill
+      // instant (execution is instant on-chain), flat to the cursor/window
+      // end. No diagonal smoothing — gaps and jumps ARE the data.
       const cum: Array<{unix: number; frac: number}> = [{unix: start, frac: 0}];
       let acc = 0n;
       for (const f of p.fills) {
+        const t = Number(f.timestamp);
+        cum.push({unix: t, frac: Number(acc) / Number(p.totalBudget)});
         acc += f.amountIn;
-        cum.push({unix: Number(f.timestamp), frac: Number(acc) / Number(p.totalBudget)});
+        cum.push({unix: t, frac: Number(acc) / Number(p.totalBudget)});
       }
       const nowX = Math.min(Math.max(xAt(now), M.left), w - M.right);
       const cursorUnix = Math.min(now, start + duration);
