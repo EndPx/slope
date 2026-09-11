@@ -506,16 +506,12 @@ export function CreateScreen() {
         <PlotMeta
           surface="SCHEDULE_PREVIEW"
           axis="CUMULATIVE_BUDGET / TIME"
-          legend={[
-            {color: "#ff8a50", label: "FRONT"},
-            {color: "#e9edf5", label: "LINEAR"},
-            {color: "#45c4d8", label: "BACK"},
-          ]}
+          legend={[{color: SHAPE_COLOR[pace], label: SHAPE_NAME[pace].toUpperCase()}]}
         />
         <div className="plot-canvas-fill">
           <CurvePreview
             fill
-            focus
+            solo
             selected={pace}
             durationSeconds={duration.seconds}
             tranches={estimate.slices}

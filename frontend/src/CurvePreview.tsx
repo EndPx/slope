@@ -38,6 +38,8 @@ export function CurvePreview(props: {
   tranches?: number;
   /** Stronger selection contrast (others drop to 25%) for configure views. */
   focus?: boolean;
+  /** Show ONLY the selected curve — no comparison curves at all. */
+  solo?: boolean;
   /** Budget size for the hover readout; undefined keeps hover time-only. */
   amount?: number;
 }) {
@@ -133,12 +135,14 @@ export function CurvePreview(props: {
         ctx.globalAlpha = 1;
       }
 
-      // Three equal-weight curves; only opacity separates the selection.
-      // During the intro each curve draws itself left to right. The
-      // selected curve draws LAST so nothing overlaps it where the shapes
-      // converge at the window end.
-      const order = [0, 1, 2].filter((s) => s !== selectedRef.current);
-      order.push(selectedRef.current);
+      // Three equal-weight curves — or the selected one alone in solo mode.
+      // Selection is expressed by opacity (solo draws it at full strength);
+      // the selected curve draws LAST so nothing overlaps it where the
+      // shapes converge at the window end.
+      const solo = soloRef.current;
+      const order = solo
+        ? [selectedRef.current]
+        : [0, 1, 2].filter((s) => s !== selectedRef.current).concat(selectedRef.current);
       for (const s of order) {
         const reveal = revealRef.current[s];
         if (reveal <= 0) continue;
@@ -305,6 +309,7 @@ export function CurvePreview(props: {
   const retargetRef = useRef<((selected: number) => void) | null>(null);
   const tranchesRef = useRef(props.tranches ?? 0);
   const othersRef = useRef(props.focus ? 0.25 : 0.4);
+  const soloRef = useRef(props.solo ?? false);
   const amountRef = useRef(props.amount);
   const hoverRef = useRef<{x: number} | null>(null);
   const revealRafRef = useRef(0);
@@ -353,6 +358,11 @@ export function CurvePreview(props: {
     othersRef.current = props.focus ? 0.25 : 0.4;
     retargetRef.current?.(selectedRef.current);
   }, [props.focus]);
+
+  useEffect(() => {
+    soloRef.current = props.solo ?? false;
+    drawRef.current();
+  }, [props.solo]);
 
   // Duration changes only move ruler labels — redraw with the new dataset.
   useEffect(() => {
