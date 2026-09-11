@@ -272,6 +272,7 @@ export function ExecutionScreen(props: {positionId: bigint}) {
                 <th className="r">sold</th>
                 <th className="r">received</th>
                 <th className="r">price</th>
+                <th className="r">vs twap</th>
                 <th className="r">impact</th>
               </tr>
             </thead>
@@ -299,6 +300,27 @@ export function ExecutionScreen(props: {positionId: bigint}) {
                     <td className="num r">{fmtToken(ev.fill.amountOut, 6)} dUSD</td>
                     <td className="num r">{fmtToken(ev.fill.executionPrice, 18, 2)}</td>
                     <td className="num r">
+                      {(() => {
+                        const twapVwap = position.benchmark?.twapVWAP;
+                        if (!twapVwap) return <span className="num">—</span>;
+                        const twap = Number(twapVwap) / 1e18;
+                        if (twap <= 0) return <span className="num">—</span>;
+                        const exec = Number(ev.fill.executionPrice) / 1e18;
+                        const bps = ((exec - twap) / twap) * 10000;
+                        const good = bps >= 0;
+                        return (
+                          <span
+                            className="num"
+                            style={{color: good ? "var(--patina)" : "var(--ember)"}}
+                            title="This fill's realized price vs the window's linear-TWAP benchmark price (same math as the position's improvement figure)"
+                          >
+                            {good ? "+" : ""}
+                            {bps.toFixed(1)} bps
+                          </span>
+                        );
+                      })()}
+                    </td>
+                    <td className="num r">
                       {ev.fill.impactChecked ? (
                         "measured"
                       ) : (
@@ -323,7 +345,7 @@ export function ExecutionScreen(props: {positionId: bigint}) {
                         {ev.skip.txHash.slice(0, 6)}…{ev.skip.txHash.slice(-4)}
                       </a>
                     </td>
-                    <td className="held-cell" colSpan={5}>
+                    <td className="held-cell" colSpan={6}>
                       <span className="chip ember">Held</span>{" "}
                       <span className="held-head">{reasonCopy(ev.skip.reason)[0]}</span>{" "}
                       <span className="note">{reasonCopy(ev.skip.reason)[1]}</span>{" "}
