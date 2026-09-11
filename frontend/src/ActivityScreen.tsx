@@ -6,7 +6,7 @@
  */
 import {useEffect, useMemo, useState} from "react";
 import {fetchPositions, type Position} from "./lib/subgraph";
-import {fmtClock, fmtToken, reasonCopy} from "./lib/format";
+import {fmtDateTime, fmtShortTx, fmtToken, reasonCopy} from "./lib/format";
 import {StatusBar} from "./StatusBar";
 import {usePageTitle} from "./lib/usePageTitle";
 import {startPolling} from "./lib/poll";
@@ -36,7 +36,7 @@ function buildStream(positions: Position[]): Event[] {
         positionId: p.id,
         block: f.blockNumber,
         tx: f.txHash,
-        flow: `${fmtToken(f.amountIn, 18)} dETH in, ${fmtToken(f.amountOut, 6)} dUSD out`,
+        flow: `${fmtToken(f.amountIn, 18)} dETH → ${fmtToken(f.amountOut, 6)} dUSD`,
       });
     }
     for (const s of p.skips) {
@@ -160,18 +160,17 @@ export function ActivityScreen() {
         <table className="log">
           <thead>
             <tr>
-              <th>time</th>
               <th>event</th>
               <th>schedule</th>
               <th>flow</th>
               <th className="r">block</th>
-              <th className="r">tx</th>
+              <th>time</th>
+              <th className="r">transaction</th>
             </tr>
           </thead>
           <tbody>
             {events.slice(0, 400).map((e, i) => (
               <tr key={`${e.kind}-${e.positionId}-${i}`} className={e.kind === "held" ? "held" : ""}>
-                <td className="num">{fmtClock(e.at)}</td>
                 <td>
                   <span
                     className={`chip ${e.kind === "filled" ? "patina" : e.kind === "held" ? "ember" : e.kind === "created" ? "paper" : "muted"}`}
@@ -181,11 +180,20 @@ export function ActivityScreen() {
                 </td>
                 <td className="num">#{e.positionId}</td>
                 <td className={e.kind === "held" ? "neg" : e.kind === "filled" ? "pos" : ""}>{e.flow ?? "—"}</td>
-                <td className="num r">{e.block.toString()}</td>
+                <td className="num r">
+                  {e.block > 0n ? Number(e.block).toLocaleString("en-US") : "—"}
+                </td>
+                <td className="num">{fmtDateTime(e.at)}</td>
                 <td className="r">
                   {e.tx ? (
-                    <a href={`${M.explorerUrl}/tx/${e.tx}`} target="_blank" rel="noreferrer">
-                      {e.tx.slice(0, 10)}…
+                    <a
+                      className="linklike num"
+                      href={`${M.explorerUrl}/tx/${e.tx}`}
+                      target="_blank"
+                      rel="noreferrer"
+                      title={`${e.label} — view on Basescan`}
+                    >
+                      {fmtShortTx(e.tx)} ↗
                     </a>
                   ) : (
                     "—"

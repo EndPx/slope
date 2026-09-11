@@ -47,6 +47,23 @@ export function fmtClock(unix: bigint): string {
   return new Date(Number(unix) * 1000).toLocaleTimeString("en-GB", {hour12: false});
 }
 
+/** Full date + time for event-log rows that span multiple days. */
+export function fmtDateTime(unix: bigint): string {
+  return new Date(Number(unix) * 1000).toLocaleString("en-US", {
+    month: "numeric",
+    day: "numeric",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: true,
+  });
+}
+
+/** Short tx hash, ArcBook style: 0x1a2b.c3d4 */
+export function fmtShortTx(hash: string): string {
+  return `0x${hash.slice(2, 6)}.${hash.slice(-4)}`;
+}
+
 export function fmtDuration(seconds: bigint): string {
   const s = Number(seconds);
   if (s >= 3600) return `${Math.floor(s / 3600)}h ${Math.floor((s % 3600) / 60)}m`;
