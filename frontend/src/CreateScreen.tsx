@@ -326,8 +326,14 @@ export function CreateScreen() {
         }
       }
 
-      // Live and delegated — show it on the positions side.
-      navigate(`/positions/${id!.toString()}`);
+      // Live and delegated — show it on the positions side, flagged as
+      // just-created so the detail screen waits for the subgraph to index.
+      try {
+        sessionStorage.setItem("awaitIndex", id!.toString());
+      } catch {
+        /* storage unavailable — the location state below still carries it */
+      }
+      navigate(`/positions/${id!.toString()}`, {state: {awaitIndex: true}});
     } catch (e: any) {
       setSteps([{key: "create", state: "failed", detail: `The wallet didn't connect — ${e?.shortMessage ?? e?.message}`}]);
     } finally {

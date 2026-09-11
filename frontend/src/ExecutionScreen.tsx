@@ -6,6 +6,7 @@
  * never left the wallet.
  */
 import {useEffect, useState} from "react";
+import {useLocation} from "react-router-dom";
 import {useWallets} from "@privy-io/react-auth";
 import {createWalletClient, custom, encodeFunctionData, http, parseAbi, createPublicClient} from "viem";
 import {baseSepolia} from "viem/chains";
@@ -38,6 +39,18 @@ export function ExecutionScreen(props: {positionId: bigint}) {
   const [delegation, setDelegation] = useState<DelegationInfo | null>(null);
   const [note, setNote] = useState<{kind: "idle" | "busy" | "ok" | "err"; text: string}>({kind: "idle", text: ""});
   const [now, setNow] = useState(() => Math.floor(Date.now() / 1000));
+  // Just-created schedules land here before the subgraph has indexed them —
+  // the create flow flags it, and the screen waits (fast-poll) instead of
+  // flashing "No schedule".
+  const location = useLocation();
+  const [awaitingIndex, setAwaitingIndex] = useState(() => {
+    if (Boolean((location.state as {awaitIndex?: boolean} | null)?.awaitIndex)) return true;
+    try {
+      return sessionStorage.getItem("awaitIndex") === props.positionId.toString();
+    } catch {
+      return false;
+    }
+  });
 
   useEffect(() => {
     let stop = false;
@@ -54,14 +67,35 @@ export function ExecutionScreen(props: {positionId: bigint}) {
       }
     };
     load();
-    const stopPolling = startPolling(load, 60_000);
+    // While waiting for a fresh schedule to index, poll fast; otherwise the
+    // regular 60 s cadence applies.
+    const stopPolling = startPolling(load, awaitingIndex ? 2_500 : 60_000);
     const clock = setInterval(() => setNow(Math.floor(Date.now() / 1000)), 1000);
     return () => {
       stop = true;
       stopPolling();
       clearInterval(clock);
     };
-  }, [props.positionId]);
+  }, [props.positionId, awaitingIndex]);
+
+  // Indexed: drop the waiting state (and its sessionStorage marker).
+  useEffect(() => {
+    if (position !== null && awaitingIndex) {
+      try {
+        sessionStorage.removeItem("awaitIndex");
+      } catch {
+        /* storage unavailable */
+      }
+      setAwaitingIndex(false);
+    }
+  }, [position, awaitingIndex]);
+
+  // Honest fallback: if it still hasn't indexed after 45 s, stop fast-polling.
+  useEffect(() => {
+    if (!awaitingIndex) return;
+    const t = setTimeout(() => setAwaitingIndex(false), 45_000);
+    return () => clearTimeout(t);
+  }, [awaitingIndex]);
 
   // Delegation facts come from the keeper server (gitignored keystore side).
   useEffect(() => {
@@ -117,6 +151,20 @@ export function ExecutionScreen(props: {positionId: bigint}) {
         <p className="note warn" style={{marginTop: "0.5rem"}}>
           {error} — retrying every 10 seconds. Execution waits for live data; nothing is shown from cache.
         </p>
+      </div>
+    );
+  }
+  if (missing && awaitingIndex) {
+    return (
+      <div className="empty" role="status">
+        <p className="meta">| AWAITING INDEX</p>
+        <h2 className="display">Schedule #{props.positionId.toString()} is live on-chain</h2>
+        <p className="note" style={{marginTop: "0.5rem"}}>
+          Waiting for the subgraph to index it — this usually takes a few seconds, and this page opens automatically.
+        </p>
+        <div className="index-bar" aria-hidden="true">
+          <span />
+        </div>
       </div>
     );
   }

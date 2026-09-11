@@ -1078,3 +1078,29 @@ main .log .log-tx {
   opacity: 0.65;
 }
 main .log .log-tx:hover { opacity: 1; }
+
+/* Awaiting-index panel — schedule just created, subgraph catching up. */
+main .index-bar {
+  width: 260px;
+  max-width: 100%;
+  height: 2px;
+  background: var(--hairline-soft);
+  border-radius: 1px;
+  overflow: hidden;
+  margin-top: 0.9rem;
+}
+main .index-bar span {
+  display: block;
+  height: 100%;
+  width: 34%;
+  background: var(--patina);
+  border-radius: 1px;
+  animation: index-sweep 1.1s var(--ease-emphasized) infinite;
+}
+@keyframes index-sweep {
+  from { transform: translateX(-110%); }
+  to { transform: translateX(310%); }
+}
+@media (prefers-reduced-motion: reduce) {
+  main .index-bar span { animation: none; }
+}
