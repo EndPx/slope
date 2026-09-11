@@ -250,24 +250,27 @@ export function RulerChart(props: {
     const ro = new ResizeObserver(resize);
     ro.observe(canvas);
     const clock = setInterval(draw, 1000);
-    // Hover tracking — crosshair follows every move, clears on leave. The
-    // per-second redraw keeps the readout alive while hovered.
+    // Hover tracking on the whole panel (not just the canvas): the right
+    // margin past the plot must stay hoverable — that is where the window
+    // ends and the final settled cliff lives. x is clamped into the plot.
     const onMove = (e: MouseEvent) => {
       const rect = canvas.getBoundingClientRect();
-      hoverRef.current = {x: e.clientX - rect.left};
+      const x = Math.min(Math.max(e.clientX - rect.left, 0), rect.width);
+      hoverRef.current = {x};
       draw();
     };
     const onLeave = () => {
       hoverRef.current = null;
       draw();
     };
-    canvas.addEventListener("mousemove", onMove);
-    canvas.addEventListener("mouseleave", onLeave);
+    const panel = canvas.parentElement ?? canvas;
+    panel.addEventListener("mousemove", onMove);
+    panel.addEventListener("mouseleave", onLeave);
     return () => {
       ro.disconnect();
       clearInterval(clock);
-      canvas.removeEventListener("mousemove", onMove);
-      canvas.removeEventListener("mouseleave", onLeave);
+      panel.removeEventListener("mousemove", onMove);
+      panel.removeEventListener("mouseleave", onLeave);
     };
   }, []);
 
