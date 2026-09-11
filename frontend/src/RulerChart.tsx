@@ -219,7 +219,9 @@ export function RulerChart(props: {
         const th = lines.length * 13 + 10;
         let bx = crossX + 14;
         if (bx + tw > w - 4) bx = crossX - tw - 14;
-        const by = M.top + 2;
+        // Vertically centered in the plot: clear of the settled/now label
+        // (top) and the ruler caps (bottom) even at the window edges.
+        const by = M.top + Math.max(4, (plotH - th) / 2);
         ctx.beginPath();
         ctx.roundRect(bx, by, tw, th, 8);
         ctx.fillStyle = "rgba(7, 11, 19, 0.92)";
