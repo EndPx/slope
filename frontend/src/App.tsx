@@ -42,7 +42,7 @@ function LiveStatus() {
     const load = async () => {
       let k: boolean;
       try {
-        const r = await fetch("http://localhost:8787/health");
+        const r = await fetch(`${import.meta.env.VITE_KEEPER_URL ?? "http://localhost:8787"}/health`);
         k = r.ok;
       } catch {
         k = false;
