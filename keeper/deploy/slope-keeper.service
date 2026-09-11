@@ -1,0 +1,21 @@
+[Unit]
+Description=Slope keeper — delegated execution loop
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=slope
+WorkingDirectory=/opt/slope/repo/keeper
+ExecStart=/usr/bin/pnpm exec tsx src/keeper.ts
+Restart=always
+RestartSec=10
+# Hardening
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ReadWritePaths=/opt/slope/repo/keeper
+ProtectHome=tmpfs
+
+[Install]
+WantedBy=multi-user.target

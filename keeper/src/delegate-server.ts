@@ -30,8 +30,26 @@ requireCredentials(cfg);
 
 const app = new Hono();
 
-// The frontend (localhost:5173) calls this endpoint cross-origin.
+// The frontend calls this endpoint cross-origin.
 app.use("*", cors());
+
+// Shared-secret auth for the state-changing/read endpoints when the server
+// is exposed beyond localhost (VPS + HTTPS). /health stays open — the UI's
+// live-status chip reads it.
+if (cfg.delegateToken) {
+  const requireToken = async (c: any, next: () => Promise<void>) => {
+    const auth = c.req.header("Authorization") ?? "";
+    if (auth !== `Bearer ${cfg.delegateToken}`) {
+      return c.json({error: "unauthorized — missing or wrong delegate token"}, 401);
+    }
+    await next();
+  };
+  app.use("/delegate", requireToken);
+  app.use("/delegations", requireToken);
+  app.use("/delegated-wallets", requireToken);
+} else if (process.env.KEEPER_EXPOSED === "1") {
+  console.warn("KEEPER_DELEGATE_TOKEN is empty while KEEPER_EXPOSED=1 — the delegate endpoints are OPEN. Only acceptable on a pure-local machine.");
+}
 
 app.get("/health", (c) => c.json({ok: true}));
 

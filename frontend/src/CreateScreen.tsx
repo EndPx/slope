@@ -291,7 +291,12 @@ export function CreateScreen() {
           } else {
             const response = await fetch(`${KEEPER_URL}/delegate`, {
               method: "POST",
-              headers: {"Content-Type": "application/json"},
+              headers: {
+                "Content-Type": "application/json",
+                ...(import.meta.env.VITE_KEEPER_TOKEN
+                  ? {Authorization: `Bearer ${import.meta.env.VITE_KEEPER_TOKEN}`}
+                  : {}),
+              },
               body: JSON.stringify({
                 positionId: id!.toString(),
                 owner: wallet.address,

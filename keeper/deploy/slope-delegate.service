@@ -1,0 +1,21 @@
+[Unit]
+Description=Slope delegate server — HTTP endpoint for frontend delegation
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=slope
+WorkingDirectory=/opt/slope/repo/keeper
+ExecStart=/usr/bin/pnpm exec tsx src/delegate-server.ts
+Restart=always
+RestartSec=10
+# Hardening
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ReadWritePaths=/opt/slope/repo/keeper
+ProtectHome=tmpfs
+
+[Install]
+WantedBy=multi-user.target

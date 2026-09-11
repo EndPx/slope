@@ -1,0 +1,8 @@
+# Caddy reverse proxy — HTTPS otomatis untuk delegate server.
+# Salin ke /etc/caddy/Caddyfile, ganti keeper.example.com dengan domainmu,
+# lalu `systemctl reload caddy`. Sertifikat diterbitkan otomatis (HTTP-01).
+
+keeper.example.com {
+	encode zstd gzip
+	reverse_proxy 127.0.0.1:8787
+}

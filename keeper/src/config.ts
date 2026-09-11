@@ -14,6 +14,7 @@ export interface KeeperConfig {
   slopePosition: string;
   manifestPath: string;
   keystorePath: string;
+  delegateToken: string;
   /** Extra seconds past the position window before the policy expires. */
   settlementBufferSeconds: bigint;
   /** How often the keeper polls the subgraph (seconds). The curve works in
@@ -50,6 +51,10 @@ export function loadConfig(): KeeperConfig {
     keystorePath: ".keystore.json",
     settlementBufferSeconds: 86_400n, // one day past the window for terminal settles
     pollIntervalSeconds: Math.max(5, Number(process.env.KEEPER_POLL_INTERVAL_SECONDS ?? 60)),
+    /** Shared secret for the delegate HTTP endpoints. Set when the delegate
+     *  server is exposed beyond localhost (VPS + HTTPS); empty means the
+     *  endpoints stay open — acceptable only for a pure-local run. */
+    delegateToken: process.env.KEEPER_DELEGATE_TOKEN ?? "",
     graphApiKey: process.env.GRAPH_API_KEY ?? "",
     // Pinned versioned deployment (docs/SUBGRAPH.md); GRAPH_QUERY_URL can
     // point at a newer version after a redeploy — never a generic URL.
