@@ -21,7 +21,8 @@ import {usePageTitle} from "./lib/usePageTitle";
 import {startPolling} from "./lib/poll";
 
 const M = MANIFEST as {slopePosition: `0x${string}`; chainId: number; publicRpcUrl: string; explorerUrl: string};
-const KEEPER_URL = "http://localhost:8787";
+const KEEPER_URL = (import.meta.env.VITE_KEEPER_URL as string | undefined) ?? "http://localhost:8787";
+const KEEPER_TOKEN = (import.meta.env.VITE_KEEPER_TOKEN as string | undefined) ?? "";
 const ABI = parseAbi(["function cancel(uint256 positionId)"]);
 
 interface DelegationInfo {
@@ -102,7 +103,9 @@ export function ExecutionScreen(props: {positionId: bigint}) {
     let stop = false;
     const load = async () => {
       try {
-        const response = await fetch(`${KEEPER_URL}/delegations`);
+        const response = await fetch(`${KEEPER_URL}/delegations`, {
+          headers: KEEPER_TOKEN ? {Authorization: `Bearer ${KEEPER_TOKEN}`} : {},
+        });
         const entries = (await response.json()) as Array<{positionId: string; keyQuorumId: string; policyId: string}>;
         if (!stop) setDelegation(entries.find((e) => e.positionId === props.positionId.toString()) ?? null);
       } catch {
