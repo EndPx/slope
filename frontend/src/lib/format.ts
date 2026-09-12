@@ -59,7 +59,7 @@ export function fmtDateTime(unix: bigint): string {
   });
 }
 
-/** Short tx hash, ArcBook style: 0x1a2b.c3d4 */
+/** Short tx hash, compact dotted form: 0x1a2b.c3d4 */
 export function fmtShortTx(hash: string): string {
   return `0x${hash.slice(2, 6)}.${hash.slice(-4)}`;
 }

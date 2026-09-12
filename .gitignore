@@ -58,3 +58,6 @@ delegate-server.log
 keeper-loop.log
 
 .vercel
+
+# local verification screenshots (repo root only)
+/*.png

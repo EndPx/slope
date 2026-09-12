@@ -188,7 +188,7 @@ main .container {
   box-sizing: border-box;
 }
 
-/* the ArcBook move: content lives in rounded, elevated panels */
+/* content lives in rounded, elevated panels */
 main .panel {
   background: var(--panel);
   border: 1px solid var(--hairline-soft);
