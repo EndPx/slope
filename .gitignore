@@ -56,3 +56,5 @@ keeper/keys/
 keeper/.privy-aggregation-id
 delegate-server.log
 keeper-loop.log
+
+.vercel
