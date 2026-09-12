@@ -1,6 +1,6 @@
 # Slope End-to-End Architecture
 
-Status: normative implementation map for the hackathon MVP. This document identifies every required brick and its boundary; it does not claim that those bricks are implemented yet. The equations, skip semantics, and revision history remain normative in [`spec/SPEC.md`](spec/SPEC.md).
+Status: **as-built**. Every brick below is implemented, deployed, and live on Base Sepolia; the Definition of Done at the end is observable today, item by item. The equations, skip semantics, and revision history remain normative in [`spec/SPEC.md`](spec/SPEC.md).
 
 ## 1. Product Boundary
 
@@ -16,7 +16,7 @@ A keeper — or anyone, because execution is permissionless — triggers fills o
 
 Computationally, each position is a **time-spread order**: unlike a limit order (bounded by price) or a plain TWAP (one implicit linear schedule), a Slope position carries an explicit, user-chosen schedule over time, and that schedule is the only thing that authorizes amounts.
 
-The MVP deliberately has:
+Deliberate non-goals, unchanged in the shipped system:
 
 - one curve family with hard-coded exponents rather than user-supplied code;
 - no oracle dependency — price comes from dual quotes against the official Aqua router;
@@ -24,51 +24,35 @@ The MVP deliberately has:
 - no protocol fee, no upgradeable proxy, no privileged administrator;
 - no protocol custody vault — no escrow balance and no refund path;
 - no in-place parameter editing — cancel and re-create;
-- one pair (WETH/USDC) on Base Sepolia; no multichain story.
+- one pair (dETH/dUSD, 18/6 decimals) on Base Sepolia; no multichain story.
 
 ## 2. System Map
 
-```text
- USER PATH
-
- User (Privy embedded wallet: email/social, no seed phrase)
-    | configure budget, pair, duration, shape, bounds
-    v
- Web app -> shared/ curve reference model -> Canvas curve preview
-    | 1. approve tokenIn to SlopePosition (>= totalBudget)
-    | 2. SlopePosition.createPosition(...)
-    | 3. Privy addSigners consent: session signer + policy
-    v
- Indexed position (Subgraph)
-
-
- EXECUTION PATH (per polling cycle)
-
- Keeper -> Subgraph: active positions + route candidates
-    |  on-chain re-verification (dual quote) - subgraph is never final truth
-    |  compute authorizedNow from shared/ curve model
-    v
- @privy-io/node eth_signTransaction   <-- Privy policy + aggregation evaluated
-    |  (target allowlist, function restriction, per-tx cap, rolling cap, expiry)
-    v
- keeper self-broadcasts raw transaction (any caller could do the same)
-    v
- SlopePosition.AdaptiveExecute(positionId, maxAmountIn)
-    |  schedule -> fillAmount = min(authorizedNow, maxAmountIn)
-    |  dual-quote price impact + absolute bounds
-    |  transferFrom(owner) pull-per-fill
-    v
- Official AquaSwapVMRouter.swap -> Aqua pull/push -> wallets
-    |
-    +-> FillExecuted / PositionSkipped / PositionCompleted events
-
-
- DATA AND TOOLING
-
- SlopePosition events -> The Graph Subgraph (Studio, Base Sepolia)
-                             |-> dashboard: planned vs actual, benchmark
-                             |-> keeper discovery (live, API-key queries)
-                             +-> explorer-linked fill history
+```mermaid
+flowchart LR
+    subgraph web["Browser - React/Vite on Vercel"]
+        UI["Six screens - create, execution staircase, benchmark, activity - all public"]
+        W["Privy embedded wallet - email onboarding, no seed phrase"]
+    end
+    subgraph chain["Base Sepolia"]
+        SP["SlopePosition - the curve authorizes amounts, dual-quote impact + rails, pull-per-fill, no escrow"]
+        AQ["Aqua registry + SwapVM router - self-deployed from official v1.0.2"]
+    end
+    subgraph vps["Keeper VPS - systemd, untrusted, holds nothing"]
+        DS["delegate server - P-256 quorum + scope policy, token-authenticated"]
+        K["keeper loop - discovery, on-chain verify, sign, broadcast"]
+    end
+    subgraph graph["The Graph Studio"]
+        SG["subgraph v0.0.3 - Position / Fill / Skip / Benchmark"]
+    end
+    W -->|"approve + createPosition"| SP
+    UI -->|"addSigners consent"| DS
+    DS -->|"scoped session keys"| K
+    K -->|"candidates + skip history, fail-closed"| SG
+    K -->|"AdaptiveExecute after on-chain re-verify"| SP
+    SP -->|"quote + swap each fill"| AQ
+    SP -->|"events indexed"| SG
+    SG -->|"planned vs actual, benchmark, activity"| UI
 ```
 
 ## 3. Sources of Truth
@@ -97,7 +81,7 @@ Prices are tokenOut per one whole tokenIn, normalized to 18 decimals:
 price = (amountOut * 10^(18 - decimalsOut) * 1e18) / (amountIn * 10^(18 - decimalsIn))
 ```
 
-Token decimals are read once at position creation and cached in the position (`decimalsIn`, `decimalsOut`). The identical formula exists in the TypeScript reference model; a committed vector asserts parity on the WETH(18)/USDC(6) asymmetric case.
+Token decimals are read once at position creation and cached in the position (`decimalsIn`, `decimalsOut`). The identical formula exists in the TypeScript reference model; a committed vector asserts parity on the dETH(18)/dUSD(6) asymmetric case.
 
 ### 4.2 Position
 
@@ -109,7 +93,7 @@ Every successful fill emits `FillExecuted(positionId, amountIn, amountOut, execu
 
 ### 4.4 Aqua-side strategy encoding
 
-Demo liquidity is provisioned by seed wallets as Aqua makers: each ships an ungated SwapVM strategy (minimal `xycSwapXD` program — deliberately without the upstream KYC-gate opcode) via `Aqua.ship(app = router, strategy, [WETH, USDC], amounts)`, with `traits = 1 << 254` marking an Aqua order. Total shipped stays ≤ the maker wallet's real balance — virtual balances are commitments, not escrow. The two roles are strictly separated: **seed wallets provide liquidity; user positions consume it over time as takers.** `SlopePosition` is the taker; it is never a maker.
+Demo liquidity is provisioned by seed wallets as Aqua makers: each ships an ungated SwapVM strategy (minimal `xycSwapXD` program — deliberately without the upstream KYC-gate opcode) via `Aqua.ship(app = router, strategy, [dETH, dUSD], amounts)`, with `traits = 1 << 254` marking an Aqua order. Total shipped stays ≤ the maker wallet's real balance — virtual balances are commitments, not escrow. The two roles are strictly separated: **seed wallets provide liquidity; user positions consume it over time as takers.** `SlopePosition` is the taker; it is never a maker.
 
 ## 5. Onchain Bricks
 
@@ -143,11 +127,11 @@ Protocol dependency: official Aqua router via a minimal interface **written by u
 
 ### 5.5 Aqua integration boundary
 
-The official registry (`0x1111…a90a`) and `AquaSwapVMRouter` (`0x1111…c0de`, tag `v1.0.2`) are deployed to Base Sepolia from their official source (`via_ir`, cancun) by our scripts — a redeployment the 1inch prize explicitly allows. We never vendor their source; the `LICENSES/` directory preserves their license texts and third-party notices. The stretch goal — a redeployed router registering a custom `_slopeXD` opcode ported from the unregistered `_twap` instruction — is a derivative work: its source would be committed under `LicenseRef-Degensoft-SwapVM-1.1` per the license's copyleft, and only after the baseline demo is green.
+The Aqua registry ([`0xd2A8f6D7…64DA`](https://sepolia.basescan.org/address/0xd2A8f6D7645F53aB23dC3EcB146a196026F964DA#code)) and `AquaSwapVMRouter` ([`0x054F…7DA2`](https://sepolia.basescan.org/address/0x054F6A7CE03fdEB7814977B0FE7017cc5B2d7DA2#code)) are self-deployed to Base Sepolia from the official `v1.0.2` source (`via_ir`, cancun target) by our scripts — a redeployment the 1inch prize explicitly allows — and both are source-verified on the explorer. We never vendor their source; the `LICENSES/` directory preserves their license texts and third-party notices. A custom `_slopeXD` opcode ported from the unregistered `_twap` instruction remained a documented stretch goal and was deliberately not pursued in the shipped MVP; the baseline demo runs the official instruction set unchanged.
 
 ### 5.6 Demo scripts
 
-Deploy the official registry + router, verify on the explorer where supported, seed ungated WETH/USDC strategies from funded wallets (total shipped ≤ wallet balance), deploy `SlopePosition`, and write `deployments/84532.json` — the single manifest consumed by web, keeper, and subgraph config.
+Deploy the official registry + router, verify on the explorer where supported, seed ungated dETH/dUSD strategies from funded wallets (total shipped ≤ wallet balance), deploy `SlopePosition`, and write `deployments/84532.json` — the single manifest consumed by web, keeper, and subgraph config.
 
 ### 5.7 Seed strategy lifecycle
 
@@ -159,7 +143,7 @@ Seed strategies are discovered by their stored `strategyHash`es (Aqua does not e
 
 | Aqua operation | Slope use |
 | --- | --- |
-| `ship(app, strategy, tokens, amounts)` | Seed wallets publish ungated WETH/USDC strategies and virtual allocations. |
+| `ship(app, strategy, tokens, amounts)` | Seed wallets publish ungated dETH/dUSD strategies and virtual allocations. |
 | `safeBalances(...)` | Available via `quote`/`swap` internals; execution requires active, sufficient allocation. |
 | `pull(...)` / `push(...)` | Inside `router.swap`: releases tokenOut from the maker strategy and credits tokenIn to it — the fill settlement. |
 | `dock(...)` | Retires a seed strategy. |
@@ -190,20 +174,20 @@ Position, event, skip-reason, and configuration types shared by frontend and kee
 
 ### 7.3 `shared/privy-policy`
 
-The policy template builder (target allowlist, function restriction, per-transaction cap, aggregation reference, expiry timestamp) shared by the consent flow and the keeper's expectations — so what the user approved is exactly what the keeper relies on.
+The policy template builder (target allowlist, function restriction, per-transaction cap, expiry timestamp) shared by the consent flow and the keeper's expectations — so what the user approved is exactly what the keeper relies on.
 
 ## 8. Keeper Service
 
-A single Node.js/TypeScript polling loop (configurable interval; accelerated for the demo). Per cycle, per active position:
+A single Node.js/TypeScript polling loop running under systemd on a public VPS (`keeper.endpx.cloud`, token-authenticated delegate API); poll interval configurable, 120 s in production. Per cycle, per active position:
 
 1. read position state from the Subgraph (one indexed query, not per-position RPC scans);
 2. compute `authorizedNow` from `shared/curve`;
 3. if below `minFillAmount` (and not in the terminal window), skip this cycle cheaply;
 4. re-verify price on-chain with the dual-quote check — the Subgraph is discovery, never the decision;
-5. sign `AdaptiveExecute(positionId, maxAmountIn = authorizedNow)` via `@privy-io/node` (`eth_signTransaction` — policy and aggregation are evaluated at signing) and self-broadcast the raw transaction;
+5. sign `AdaptiveExecute(positionId, maxAmountIn = authorizedNow)` via `@privy-io/node` (`eth_signTransaction`, the policy evaluated at signing) and self-broadcast the raw transaction;
 6. log executed/skipped with the on-chain skip reason; park positions with persistent failures (e.g. revoked approval).
 
-The keeper is untrusted and replaceable: it holds no user funds, and its `maxAmountIn` can only tighten what the curve already authorizes. Privy's policy constrains this signer's scope (target allowlist, function restriction, per-transaction cap, rolling aggregation cap with headroom, expiry); revocation happens in the UI. Aggregation caveats are honored by design: the keeper's slippage pre-check keeps skips rare, so signed-but-skipped transactions do not meaningfully consume the rolling cap.
+The keeper is untrusted and replaceable: it holds no user funds, and its `maxAmountIn` can only tighten what the curve already authorizes. Privy's policy constrains this signer's scope (target allowlist, function restriction, per-transaction cap, expiry); revocation happens in the UI. Cumulative spend aggregations were evaluated and deliberately left out of the signing path: an aggregation reference condition rejects every signing request regardless of operator or value format (established by bisecting a live policy), so rate limiting lives in the keeper and the budget invariant lives in the contract where it belongs.
 
 ## 9. The Graph Brick
 
@@ -223,13 +207,17 @@ The subgraph is deployed to Subgraph Studio on Base Sepolia and queried with an 
 
 ## 10. Web Application Bricks
 
-- **Wallet and network layer**: Privy embedded-wallet onboarding (email/social, no seed phrase) as the primary path; external wallets optional; chain enforcement to Base Sepolia; deployment manifest resolution; no secrets in the browser bundle.
-- **Screen 1 — Create Order**: budget, pair, duration, shape (three radio controls with live Canvas previews rendered from `shared/curve` — what you see is what the contract computes), price bounds, impact limit, advanced `minFillAmount`; then the three-step flow: approve, create, signer consent.
-- **Screen 2 — Execution Progress**: planned curve vs. actual cumulative execution (fills from the Subgraph), fill table with explorer links, remaining budget and time, cancel + revoke.
-- **Screen 3 — Performance**: benchmark overlay (actual VWAP vs. linear-TWAP VWAP) and position history with per-position improvement summary.
+- **Wallet and network layer**: Privy embedded-wallet onboarding (email, no seed phrase) as the only path — external wallets are deliberately disabled in the modal because session signers can only control Privy-managed wallets; chain enforcement to Base Sepolia; deployment manifest resolution; no secrets beyond the rotatable Studio query key in the browser bundle.
+- **Landing**: the pace ruler (all three schedules on one time axis) with a live indexed proof line and a real router quote.
+- **Create**: the parameter matrix with the Canvas schedule preview drawn from `shared/curve` — what you see is what the contract computes — plus a live custody check and a deployment step machine (mint when inventory is short, approve when allowance is short, create, delegate) with per-stage failure states, retry from the failed step, auto-delegate, and redirect to the schedule's page.
+- **Execution**: the planned-versus-actual ruler with an honest step path, fill and hold journal with tx links and per-fill deviation vs the TWAP benchmark, the Aqua protocol trace decoded with `@1inch/aqua-sdk`, remaining budget and time, delegation panel with revoke.
+- **Portfolio**: wallet-scoped schedules plus live dETH and dUSD balances.
+- **Performance**: benchmark overlay (actual VWAP vs. linear-TWAP VWAP) and per-position improvement summary, negatives included.
+- **Activity**: the full indexed event stream with dates, block numbers, tx links, and CSV export.
+- **Boot gate and awaiting-index states** that name what is actually loading instead of pretending.
 - **Attribution footer**: "Powered by Aqua — © Degensoft Ltd 2025" and "Powered by SwapVM — © Degensoft Ltd 2025", per the licenses' README-and-UI requirement.
 
-Dark theme, card layout, live status indicator, monospace numerics; raw parameters behind advanced disclosure.
+Dark theme, rounded elevated panels, live status indicator, monospace numerics; raw parameters behind advanced disclosure.
 
 ## 11. End-To-End Flows
 
@@ -245,6 +233,27 @@ Dark theme, card layout, live status indicator, monospace numerics; raw paramete
 ### 11.2 Keeper fill cycle
 
 See section 8. The contract independently re-derives everything: even a hostile keeper can only pass a `maxAmountIn` smaller than the curve allows.
+
+```mermaid
+sequenceDiagram
+    participant K as Keeper (VPS, untrusted)
+    participant G as Subgraph (Studio)
+    participant C as SlopePosition (Base Sepolia)
+    participant R as Aqua SwapVM router
+    participant P as Privy policy engine
+    K->>G: candidates query (active positions, indexed executedAmount)
+    K->>C: on-chain re-verify + dual-quote probe
+    K->>P: eth_signTransaction AdaptiveExecute(positionId, maxAmountIn)
+    P-->>K: signed - scope is target, selector, position id, per-tx cap, expiry
+    K->>C: broadcast raw transaction (any caller could do the same)
+    C->>C: authorizedNow = curve(elapsed) - executed, terminal clamp
+    C->>R: probe quote, then real quote for fillAmount
+    C->>C: impact bps + absolute rails checked, skip-with-event on failure
+    C->>R: swap exact-input
+    R->>R: Aqua pull tokenIn / push tokenOut, no escrow between fills
+    C-->>K: FillExecuted or PositionSkipped with reason
+    G->>G: index fill + BenchmarkComparison snapshot
+```
 
 ### 11.3 Inside `AdaptiveExecute`
 
@@ -294,8 +303,8 @@ Fund seed wallets from faucets → approve the Aqua registry → `ship` ungated 
 
 ### 12.5 Delegated-execution safety
 
-- Policy = target allowlist + function restriction + per-transaction cap + rolling aggregation cap (with headroom above `totalBudget`) + expiry.
-- Aggregation is disaster prevention, not accounting: the pre-check keeps skips rare; the contract is the budget authority (`executedAmount <= totalBudget`).
+- Policy = target allowlist + function restriction + per-transaction cap + expiry.
+- Cumulative spend aggregations were evaluated and deliberately removed from the signing path: an aggregation reference condition rejects every `eth_signTransaction` that contains one, established by bisecting a live policy. Rate limiting therefore lives in the keeper; the budget invariant lives in the contract (`executedAmount <= totalBudget`).
 - Revocation is user-reachable in one click; expiry ends authority automatically.
 
 ### 12.6 Trust minimization
@@ -332,7 +341,8 @@ One profile, decided deliberately (SPEC Decision 1): Base Sepolia with the offic
 
 ### 14.4 Runtime operations
 
-- Keeper interval configurable (accelerated for the demo); skip-reason logs retained for the demo narrative.
+- Keeper interval configurable (the VPS keeper runs at 120 s, about 720 queries/day against the 3,000/day Studio bucket); skip-reason logs retained in journald for the demo narrative.
+- The delegate API carries a shared-secret token whenever it is exposed beyond localhost; see SECURITY.md.
 - Demo reset script: re-seed liquidity, re-fund wallets, redeploy or reuse `SlopePosition` per manifest.
 - RPC fallback endpoints configured; attribution footer present; no private key, API key, or sponsor credential ever committed.
 
@@ -356,12 +366,13 @@ contracts/
   src/interfaces/  minimal Aqua router interface (authored by us)
   script/          deploy official Aqua, seed strategies, deploy + verify SlopePosition, manifest
   test/            unit, fuzz, differential-vector, and Sepolia integration tests
-frontend/          React + Vite app (three screens, Canvas previews, Privy onboarding)
+frontend/          React + Vite app (six screens, Canvas charts, Privy onboarding)
 keeper/            polling loop, verification pipeline, Privy signing, logging
 subgraph/          schema, AssemblyScript mappings, Studio deployment config
 shared/            curve reference model, shared types, policy template builder
 deployments/       84532.json manifest
 docs/              spec, plans, architecture, wire format, runbooks
+submission/        cover, logo, and live screenshots for the ETHGlobal form
 prompts/           material AI-assisted development artifacts
 ```
 
@@ -377,14 +388,14 @@ The file-by-file sequence, tests, and intended commits are normative in [`IMPLEM
 6. **Prove real settlement** — the same execution through the deployed official router on-chain.
 7. **Prove delegation** — Privy onboarding, policy enforcement, sign-and-broadcast end to end.
 8. **Ship live data** — Subgraph on Studio; keeper discovery depends on it.
-9. **Ship the product UI** — three screens on the hosted URL.
+9. **Ship the product UI** — the six-screen application on the hosted URL.
 10. **Harden and rehearse** — demo reset, two full rehearsals, submission package.
 
-No later brick may compensate for a failed earlier gate: the UI, the subgraph, or sponsor tooling cannot make an unverified curve or a broken settlement safe.
+No later brick may compensate for a failed earlier gate: the UI, the subgraph, or sponsor tooling cannot make an unverified curve or a broken settlement safe. All ten gates closed between 5 and 12 September 2026.
 
 ## 18. MVP Definition Of Done
 
-The architecture is implemented only when a judge can observe this complete sequence with real contract calls:
+The shipped product satisfies this complete sequence with real contract calls. Each item is observable today:
 
 1. a fresh browser reaches the hosted app and onboards with an embedded wallet — no seed phrase, no extension required;
 2. the user creates a position whose on-screen curve is the curve the contract enforces;
@@ -395,4 +406,4 @@ The architecture is implemented only when a judge can observe this complete sequ
 7. an out-of-scope signer request is rejected by the Privy policy, and revoke cleanly ends delegated authority;
 8. the full test suite passes from a fresh clone.
 
-Anything less is a useful prototype, but not the complete Slope hackathon product described by this architecture.
+Schedules #12 and #13 demonstrate the complete sequence end to end, and the three FEEDBACK documents at the repository root record the sponsor-integration findings encountered on the way, together with the sponsor issues they produced.
