@@ -28,6 +28,10 @@ Deliberate non-goals, unchanged in the shipped system:
 
 ## 2. System Map
 
+The whole system on one page (hand-drawn; the precise Mermaid map and the per-fill sequence follow):
+
+![Slope data flow](data-flow.png)
+
 ```mermaid
 flowchart LR
     subgraph web["Browser - React/Vite on Vercel"]

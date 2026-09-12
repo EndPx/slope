@@ -2,6 +2,8 @@
 
 Slope is a non-custodial execution product for takers: it splits one large token swap across **time** along a user-chosen execution curve — Aggressive, Neutral, or Conservative — instead of dumping the full size into a single swap or a naive linear TWAP. Positions are created from an embedded wallet in one flow, executed by a delegated keeper within Privy-policy bounds, settled through the official 1inch Aqua/SwapVM shared-liquidity layer, and audited against a verifiable linear-TWAP benchmark indexed by The Graph.
 
+![Slope data flow — one schedule, delegated keeper, Aqua settlement, indexed by The Graph](docs/data-flow.png)
+
 ## Status
 
 This repository was initialized from an empty GitHub repository on **5 September 2026**, during ETHGlobal Online. Work is spec-driven: the complete product and protocol specification was written and committed **before** implementation began, and every post-handoff design decision is recorded as a numbered, dated revision inside that document.
