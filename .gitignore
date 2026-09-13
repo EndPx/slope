@@ -61,3 +61,6 @@ keeper-loop.log
 
 # local verification screenshots (repo root only)
 /*.png
+
+# local recording aid (not project material)
+docs/DEMO_VIDEO_SCRIPT.md

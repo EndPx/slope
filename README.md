@@ -55,7 +55,6 @@ Will be linked here once deployed — application, subgraph, and hosted endpoint
 - [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) — the normative end-to-end implementation map (bricks, sources of truth, flows, security, definition of done).
 - `docs/WIRE_FORMAT.md` — normative order/program encoding, event contract, units, and test vectors *(added with the Aqua integration milestone)*.
 - [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md) — the deployment/seed/verification runbook with the live addresses, provenance, and on-chain evidence.
-- [`docs/DEMO_VIDEO_SCRIPT.md`](docs/DEMO_VIDEO_SCRIPT.md) — the submission recording sequence.
 - [`prompts/`](prompts/README.md) — the material AI-assisted specifications and prompts: the initial handoff, each implementation-step directive, and every human review that produced a numbered design revision — committed chronologically per the ETHGlobal transparency requirement.
 - [`FEEDBACK-PRIVY.md`](FEEDBACK-PRIVY.md) — our builder feedback for the Privy track, from deep production usage of conditional signers, key quorums, and the policy engine during this hackathon.
 - [`FEEDBACK-AQUA.md`](FEEDBACK-AQUA.md) — our builder feedback for the 1inch Aqua track: event-decoding pitfalls of `@1inch/aqua-sdk` on a Base Sepolia deployment, verified against live fill receipts.
