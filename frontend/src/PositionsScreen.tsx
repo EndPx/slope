@@ -22,6 +22,12 @@ export function PositionsScreen() {
 
   const [positions, setPositions] = useState<Position[] | null>(null);
   const [failed, setFailed] = useState(false);
+  // Ticking clock: expired-window detection for honest statuses.
+  const [now, setNow] = useState(() => Math.floor(Date.now() / 1000));
+  useEffect(() => {
+    const t = setInterval(() => setNow(Math.floor(Date.now() / 1000)), 30_000);
+    return () => clearInterval(t);
+  }, []);
   const [filter, setFilter] = useState<"all" | "yours">("all");
 
   useEffect(() => {
@@ -127,7 +133,10 @@ export function PositionsScreen() {
             {visible.map((p) => {
               const pct = Number((p.executedAmount * 10000n) / (p.totalBudget || 1n)) / 100;
               const mine = ownAddress && p.owner.toLowerCase() === ownAddress;
-              const status = !p.isActive ? (p.executedAmount >= p.totalBudget ? "completed" : "cancelled") : "live";
+              const windowClosed = now >= Number(p.startTimestamp + p.duration);
+              const status = !p.isActive
+                ? p.executedAmount >= p.totalBudget ? "completed" : "cancelled"
+                : windowClosed ? "expired" : "live";
               return (
                 <tr key={p.id} tabIndex={0} className="clickable" onClick={() => navigate(`/positions/${p.id}`)} onKeyDown={(e) => e.key === "Enter" && navigate(`/positions/${p.id}`)}>
                   <td className="num">
@@ -140,7 +149,10 @@ export function PositionsScreen() {
                     </span>
                   </td>
                   <td>
-                    <span className={`chip ${status === "live" ? "patina" : "muted"}`}>{status}</span>
+                    <span
+                      className={`chip ${status === "live" ? "patina" : status === "expired" ? "ember" : "muted"}`}
+                      title={status === "expired" ? "The window closed before this schedule was ever executed - it was never picked up by a keeper, so nothing was filled" : undefined}
+                    >{status}</span>
                   </td>
                   <td className="num r" style={{minWidth: 130}}>
                     <div style={{display: "flex", alignItems: "center", gap: 8, justifyContent: "flex-end"}}>
