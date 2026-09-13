@@ -1,6 +1,6 @@
 # Demo Video Script — Slope (final, synced to the 8-slide deck)
 
-Target: **3:35**, one take per slide, stitched in the editor. Structure follows the proven
+Target: **3:40**, one take per slide, stitched in the editor. Structure follows the proven
 ETHGlobal winner pattern (web3torrent): team intro → what we built → how it works → live
 demo → how it's made → future work → live URL → close.
 
@@ -18,59 +18,60 @@ demo → how it's made → future work → live URL → close.
 
 ## Voice script, synced to video time
 
-### SLIDE 1 — Title (0:00 – 0:12)
+### SLIDE 1 — Title (0:00 – 0:08)
 
-> Hi, we're team Slope, and this is what we built for ETHGlobal Online. I'm [NAME], and I
-> built the entire stack — the contracts, the keeper, and the frontend.
+> Hi, we're team Slope, and this is what we built for ETHGlobal Online.
 
-### SLIDE 2 — Who are we (0:12 – 0:25)
+### SLIDE 2 — Who are we (0:08 – 0:33)
 
-> The whole thing runs without a seed phrase and without holding user funds anywhere —
-> that constraint drove every design decision you are about to see.
+> I'm Muhammad Meidy Noor Al Barry, fullstack developer, and I built the entire stack —
+> the contracts, the keeper, the subgraph, and the frontend. The whole thing runs without a
+> seed phrase and without holding user funds anywhere — that constraint drove every design
+> decision you are about to see.
 
-*(Keep this line short and confident; it doubles as the custody claim.)*
+*(Read the name once, then the claim. This doubles as the custody statement.)*
 
-### SLIDE 3 — What We Built (0:25 – 0:50)
+### SLIDE 3 — What We Built (0:33 – 0:58)
 
 > One large swap, executed as scheduled slices over time. Non custodial, enforced on chain.
 > Instead of one market order that eats the full price impact, the user declares a budget,
 > a duration, and a pace, plus hard price rails. The curve decides how much may sell at
 > each moment, and the contract refuses anything outside it.
 
-### SLIDE 4 — How It Works (0:50 – 1:15)
+### SLIDE 4 — How It Works (0:58 – 1:23)
 
 > Four moving parts. A curve on chain authorizes each slice. A delegated keeper on a VPS
 > executes every fill. Every fill settles through the 1inch Aqua router. And signing uses
 > a Privy scoped session key, enforced by the contract — so the keeper can trigger fills
 > forever but can never exceed what the schedule authorizes.
 
-### DEMO — live app (1:15 – 2:50)
+### DEMO — live app (1:23 – 2:58)
 
 > Let's jump into the demo.
 
-*(1:15 — Landing. Point at the live-testnet line; those numbers are real indexed data.)*
+*(1:23 — Landing. Point at the live-testnet line; those numbers are real indexed data.)*
 
 > This is the live app on Base Sepolia. Everything you see here is real indexed data.
 
-*(1:30 — Create. Fill the form: 10 dETH, 15 min, aggressive, rails 100/10000, impact 5%.)*
+*(1:38 — Create. Fill the form: 10 dETH, 15 min, aggressive, rails 100/10000, impact 5%.)*
 
 > I'll sell ten dETH over fifteen minutes at an aggressive pace, with price rails and a
 > five percent impact limit. The estimated output here is a real quote from the Aqua router
 > — not a made-up rate.
 
-*(1:45 — Click Deploy. The stepper runs: approve → create → delegate; answer three wallet
+*(1:53 — Click Deploy. The stepper runs: approve → create → delegate; answer three wallet
 popups.)*
 
 > Deploy. Every stage is visible — approve the spending, create the schedule on-chain, and
 > delegate execution to the keeper. Each one is signed in the wallet, and delegation
 > happens automatically.
 
-*(2:05 — Redirect to /positions/14.)*
+*(2:13 — Redirect to /positions/14.)*
 
 > And we land on the schedule's own page. It is live on-chain, and the keeper picks it up on
 > its next tick.
 
-*(2:10 — CUT with a "15 minutes later" caption. Show the filled staircase, the colored
+*(2:18 — CUT with a "15 minutes later" caption. Show the filled staircase, the colored
 vs-benchmark column, the Aqua trace.)*
 
 > Here is that same window a few minutes in. Every step is a real fill through the Aqua
@@ -78,12 +79,12 @@ vs-benchmark column, the Aqua trace.)*
 > benchmark, and the table shows each fill's deviation in basis points. Below it, the Aqua
 > protocol trace of the latest fill, decoded from the receipt with the official SDK.
 
-*(2:40 — Activity.)*
+*(2:48 — Activity.)*
 
 > And in Activity, the whole indexed event stream — holds included, each with its reason —
 > exportable as CSV.
 
-### SLIDE 6 — How It's Made (2:50 – 3:10)
+### SLIDE 6 — How It's Made (2:58 – 3:18)
 
 > Three key pieces — the contract, the keeper, and the subgraph. A fixed point curve
 > kernel, fuzz tested and cross validated against a TypeScript reference model. A fail
@@ -91,13 +92,13 @@ vs-benchmark column, the Aqua trace.)*
 > never makes a financial decision. And every fill settles through the official 1inch Aqua
 > router, self deployed on Base Sepolia.
 
-### SLIDE 7 — Future Work (3:10 – 3:25)
+### SLIDE 7 — Future Work (3:18 – 3:30)
 
 > Next up: price driven execution, where the duration becomes optional. Account
 > abstraction, so external wallets like MetaMask can delegate through smart accounts. And
 > mainnet, with more pairs and pace shapes.
 
-### SLIDE 8 — Check it out live (3:25 – 3:35)
+### SLIDE 8 — Check it out live (3:30 – 3:40)
 
 > You can try it right now at slope-beta.vercel.app, and read the full source at
 > github.com/EndPx/slope. We had a lot of fun building this — thank you so much for your
