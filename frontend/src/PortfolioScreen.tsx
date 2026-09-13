@@ -14,9 +14,9 @@ import {fmtToken} from "./lib/format";
 import {SHAPE_COLOR, SHAPE_NAME} from "./CurvePreview";
 import {usePageTitle} from "./lib/usePageTitle";
 
-function summarize(positions: Position[]) {
+function summarize(positions: Position[], now: number) {
   const owned = positions;
-  const active = owned.filter((p) => p.isActive);
+  const active = owned.filter((p) => p.isActive && now < Number(p.startTimestamp + p.duration));
   return {
     activeCount: active.length,
     executed: owned.reduce((acc, p) => acc + p.executedAmount, 0n),
@@ -44,6 +44,12 @@ export function PortfolioScreen() {
   const address = wallet?.address;
   const [positions, setPositions] = useState<Position[] | null>(null);
   const [failed, setFailed] = useState(false);
+  // Ticking clock: expired-window detection for honest statuses.
+  const [now, setNow] = useState(() => Math.floor(Date.now() / 1000));
+  useEffect(() => {
+    const t = setInterval(() => setNow(Math.floor(Date.now() / 1000)), 30_000);
+    return () => clearInterval(t);
+  }, []);
   // The wallet's own tokens: dETH (schedule input) and dUSD (fill output).
   const balances = useWalletBalances(address);
 
@@ -90,7 +96,7 @@ export function PortfolioScreen() {
     );
   }
 
-  const stats = positions === null ? null : summarize(positions);
+  const stats = positions === null ? null : summarize(positions, now);
 
   return (
     <section className="flex flex-col gap-5">
@@ -125,7 +131,7 @@ export function PortfolioScreen() {
         </span>
         <span>
           dUSD balance
-          <b style={{color: "var(--patina)"}}>{balances.dusd !== null ? fmtToken(balances.dusd, 18) : "…"}</b>
+          <b style={{color: "var(--patina)"}}>{balances.dusd !== null ? fmtToken(balances.dusd, 6) : "…"}</b>
           <small>what your fills receive</small>
         </span>
       </div>
@@ -185,7 +191,10 @@ export function PortfolioScreen() {
           <tbody>
             {positions.map((p) => {
               const pct = Number((p.executedAmount * 10000n) / (p.totalBudget || 1n)) / 100;
-              const status = !p.isActive ? (p.executedAmount >= p.totalBudget ? "completed" : "cancelled") : "live";
+              const windowClosed = now >= Number(p.startTimestamp + p.duration);
+              const status = !p.isActive
+                ? p.executedAmount >= p.totalBudget ? "completed" : "cancelled"
+                : windowClosed ? "expired" : "live";
               return (
                 <tr key={p.id} tabIndex={0} className="clickable" onClick={() => navigate(`/positions/${p.id}`)} onKeyDown={(e) => e.key === "Enter" && navigate(`/positions/${p.id}`)}>
                   <td className="num">
@@ -203,7 +212,7 @@ export function PortfolioScreen() {
                         <div style={{width: `${Math.min(100, pct)}%`, height: "100%", background: "var(--patina)"}} />
                       </div>
                       <span>
-                        {p.fills.length} / {Math.max(1, Math.ceil(Number(p.totalBudget) / Number(p.minFillAmount || 1n)))}
+                        {p.fills.length} {p.fills.length === 1 ? "fill" : "fills"}
                       </span>
                     </div>
                     <div style={{textAlign: "right", color: "var(--muted)", fontSize: "0.68rem"}}>{pct.toFixed(0)}%</div>
@@ -215,7 +224,10 @@ export function PortfolioScreen() {
                     {fmtToken(p.totalBudget - p.executedAmount, 18)}
                   </td>
                   <td>
-                    <span className={`chip ${status === "live" ? "patina" : "muted"}`}>{status}</span>
+                    <span
+                      className={`chip ${status === "live" ? "patina" : status === "expired" ? "ember" : "muted"}`}
+                      title={status === "expired" ? "The window closed before this schedule was ever executed - it was never picked up by a keeper, so nothing was filled" : undefined}
+                    >{status}</span>
                   </td>
                   <td className="r">
                     <button
